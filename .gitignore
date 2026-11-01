@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 构建产物
+build/
+dist/
+*.spec.bak
+
+# RinUI 运行时在 cwd 下生成的配置缓存（rin_ui.json）
+RinUI/
+
+# 本机运行数据
+*.local.json
+
+# 运行数据（不随仓库提交）
+*.log
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store

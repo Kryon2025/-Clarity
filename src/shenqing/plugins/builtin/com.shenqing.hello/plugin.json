@@ -1,0 +1,9 @@
+{
+  "id": "com.shenqing.hello",
+  "name": "你好，深清",
+  "version": "1.0.0",
+  "api_version": "0.1",
+  "entry": "main.py",
+  "author": "深清",
+  "description": "最小示例插件：加载时打招呼，专注结束时记一条记录。"
+}

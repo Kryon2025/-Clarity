@@ -1,0 +1,9 @@
+{
+  "id": "com.shenqing.focus_stats",
+  "name": "专注统计",
+  "version": "1.0.0",
+  "api_version": "0.1",
+  "entry": "main.py",
+  "author": "深清",
+  "description": "按空间累计专注次数与分钟数，数据写入插件自己的 settings.json，供以后接统计 UI。"
+}

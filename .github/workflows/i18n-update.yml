@@ -1,0 +1,169 @@
+name: I18n Update
+
+# 参考 Class Widgets 2（CW2）的 i18n-update.yml：
+#   push 到主分支且改动 src/**/*.py|qml 或 locales/*.ts 时，
+#   1) 用 pyside6-lupdate 更新所有 .ts 并自动提交
+#   2) 用 pyside6-lrelease 编译 .qm 并自动提交
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "src/shenqing/**/*.py"
+      - "src/shenqing/**/*.qml"
+      - "src/shenqing/locales/*.ts"
+  workflow_dispatch:
+    inputs:
+      update_ts_files:
+        description: "是否更新 .ts 文件"
+        required: true
+        default: true
+        type: boolean
+      compile_to_qm:
+        description: "是否编译 .qm 文件"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: i18n-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  detect-changes:
+    name: Check File Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_update_ts: ${{ steps.detect.outputs.should_update_ts }}
+      should_compile_qm: ${{ steps.detect.outputs.should_compile_qm }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect file changes
+        id: detect
+        shell: bash
+        run: |
+          should_update_ts="false"
+          should_compile_qm="false"
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              changed_files=$(git diff --name-only HEAD~1 HEAD)
+            else
+              changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+            fi
+            echo "Changed files:"
+            echo "$changed_files"
+
+            if echo "$changed_files" | grep -qE '^src/shenqing/.+\.(py|qml)$' \
+               || echo "$changed_files" | grep -qE '^src/shenqing/locales/.+\.ts$'; then
+              should_update_ts="true"
+              should_compile_qm="true"
+            fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            should_update_ts="${{ github.event.inputs.update_ts_files }}"
+            should_compile_qm="${{ github.event.inputs.compile_to_qm }}"
+          fi
+
+          echo "should_update_ts=$should_update_ts" >> "$GITHUB_OUTPUT"
+          echo "should_compile_qm=$should_compile_qm" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## 文件变更"
+            echo "| 任务 | 执行 |"
+            echo "|------|------|"
+            echo "| 更新 .ts | $should_update_ts |"
+            echo "| 编译 .qm | $should_compile_qm |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  update-translations:
+    name: Update .ts files
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_update_ts == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PySide6 tools
+        shell: bash
+        run: python -m pip install "PySide6~=6.11"
+
+      - name: Update translation sources
+        shell: bash
+        run: python scripts/i18n.py extract
+
+      - name: Commit updated .ts files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        continue-on-error: true
+        with:
+          commit_message: |
+            chore(i18n): update ts files
+
+            - actor: ${{ github.actor }}
+            - event: ${{ github.event_name }}
+            - sha: ${{ github.sha }}
+            - run: ${{ github.run_id }}
+          commit_options: "--no-verify --signoff"
+          file_pattern: "src/shenqing/locales/*.ts"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+
+  compile-translations:
+    name: Compile .qm files
+    runs-on: ubuntu-latest
+    needs: [detect-changes, update-translations]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.should_compile_qm == 'true' &&
+      (needs.update-translations.result == 'success' || needs.update-translations.result == 'skipped')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PySide6 tools
+        shell: bash
+        run: python -m pip install "PySide6~=6.11"
+
+      - name: Compile .qm files
+        shell: bash
+        run: python scripts/i18n.py compile
+
+      - name: Commit compiled .qm files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        continue-on-error: true
+        with:
+          commit_message: |
+            chore(i18n): compile qm files
+
+            - actor: ${{ github.actor }}
+            - event: ${{ github.event_name }}
+            - sha: ${{ github.sha }}
+            - run: ${{ github.run_id }}
+          commit_options: "--no-verify --signoff"
+          file_pattern: "src/shenqing/locales/*.qm"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
