@@ -111,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationDisplayName(f"{APP_NAME}（{APP_ALIAS}）")
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName(APP_ID)
+    # 关窗只收托盘，不退出后台
+    app.setQuitOnLastWindowClosed(False)
 
     icon = app_icon_path()
     if icon is not None:

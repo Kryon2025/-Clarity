@@ -14,6 +14,15 @@ FluentWindow {
     minimumWidth: 960
     minimumHeight: 640
     title: qsTr("%1（%2）").arg(App.appName).arg(App.appAlias)
+
+    // 关闭主窗口 = 收进托盘继续运行（真正退出走托盘/速启面板的「退出深清」）
+    property bool allowClose: false
+    onClosing: function (close) {
+        if (!win.allowClose) {
+            close.accepted = false
+            win.hide()
+        }
+    }
     titleEnabled: false
     color: "transparent"
     appLayerEnabled: false
