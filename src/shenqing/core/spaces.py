@@ -20,11 +20,11 @@ from PySide6.QtCore import QCoreApplication
 from ..consts import SPACE_MAX_MINUTES, SPACE_MIN_MINUTES, SPACE_MINUTE_STEP
 from ..paths import app_data_dir
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 MODES = ("light", "medium", "heavy")
 
 #: 各档位默认时长（分钟）
-DEFAULT_MINUTES = {"light": 45, "medium": 90, "heavy": 180}
+DEFAULT_MINUTES = {"light": 45, "medium": 90, "heavy": 1}
 #: 深清空间名固定（不可改）
 HEAVY_NAME_KEY = "深清空间"
 #: 空间名长度上限
@@ -188,6 +188,11 @@ class SpaceManager:
     def load(self) -> None:
         version, raw_items = self._read_raw()
         spaces = self._migrate(version, raw_items)
+        # v6：深清默认 1 分钟——旧文件里深清若仍是旧默认 180 分钟，改回 1 分钟
+        if version < 6:
+            for space in spaces:
+                if space["mode"] == "heavy" and space["minutes"] == 180:
+                    space["minutes"] = DEFAULT_MINUTES["heavy"]
         # 去重 id（损坏数据兜底）
         seen: set[str] = set()
         for space in spaces:

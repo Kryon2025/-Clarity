@@ -1248,6 +1248,11 @@ FluentWindow {
         }
     }
 
+    // ---------- 进入专注前的 10 秒倒计时（水滴凝聚） ----------
+    EnterCountdown {
+        animationsEnabled: win.pageTransitions
+    }
+
     // ---------- 重度锁机全屏遮罩 ----------
     LockOverlay {
         animationsEnabled: win.pageTransitions

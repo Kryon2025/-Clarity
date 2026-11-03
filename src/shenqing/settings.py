@@ -18,6 +18,7 @@ DEFAULTS: dict[str, Any] = {
     "hardening": True,      # 防退出加固：隐藏任务栏 + 屏蔽系统快捷键
     "keep_alive": True,     # 不杀进程：只隐藏窗口 + 静音（保留未保存工作）
     "admin_mode": False,    # 以管理员身份运行（启动时 UAC 提权）
+    "auto_update": True,    # 启动后自动检查 GitHub Releases 更新
     "default_minutes": 25,
     "lock_level": LockLevel.MEDIUM.value,
     "guard_interval_ms": 1000,

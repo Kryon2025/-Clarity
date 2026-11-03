@@ -23,6 +23,11 @@ datas = [
     # 翻译：i18n.locales_dir() = resource_root()/locales
     (str(SRC / "shenqing" / "locales"), "locales"),
 ]
+datas += [
+    (str(ROOT / "LICENSE.txt"), "."),
+    (str(ROOT / "THIRD_PARTY_NOTICES.md"), "."),
+    (str(ROOT / "CHANGELOG.md"), "."),
+]
 datas += collect_data_files("RinUI")             # RinUI 的 QML 组件与字体
 
 hiddenimports = [

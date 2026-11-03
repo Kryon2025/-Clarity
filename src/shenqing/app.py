@@ -266,6 +266,9 @@ def main(argv: list[str] | None = None) -> int:
         # 首次运行提示：默认最高权限 + 最高权限自启
         if settings.get("elevated_bootstrap"):
             _bootstrap_elevated(settings, bridge)
+        # 自动更新：启动 6 秒后检查一次 GitHub Releases（auto_update 可关）
+        if bool(settings.get("auto_update", True)):
+            QTimer.singleShot(6000, bridge.checkUpdate)
 
     if args.smoke:
         QTimer.singleShot(3000, lambda: _smoke_finish(app, window))

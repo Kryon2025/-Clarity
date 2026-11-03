@@ -47,6 +47,10 @@ class BridgeTest(unittest.TestCase):
         os.environ.pop("SHENQING_DATA_DIR", None)
 
     # ---------- 基础 ----------
+    def _advance_prepare(self) -> None:
+        for _ in range(10):
+            self.bridge._tick_prepare()
+
     def test_spaces_flat_with_view_fields(self) -> None:
         bridge = self.bridge
         spaces = bridge.spaces
@@ -176,6 +180,7 @@ class BridgeTest(unittest.TestCase):
             if item["mode"] == "medium":
                 bridge.setSpaceMinutes(item["id"], 90)  # 不影响本次
         bridge.startSpace(space_id)
+        self._advance_prepare()
         self.assertTrue(bridge.busy)
         self.assertEqual(bridge.totalSeconds, 120)
         self.assertEqual(bridge.sessionLevel, "light")
@@ -191,6 +196,7 @@ class BridgeTest(unittest.TestCase):
 
     def test_start_space_missing_toasts(self) -> None:
         self.bridge.startSpace("sp_missing")
+        self._advance_prepare()
         self.assertFalse(self.bridge.busy)
         self.assertTrue(any("不存在" in t for t in self.toasts))
 
@@ -200,6 +206,7 @@ class BridgeTest(unittest.TestCase):
         bridge.setSpaceMinutes(second, 3)
         bridge.setSpaceMinutesFor("light", 2)  # 第一张
         bridge.startMode("light")
+        self._advance_prepare()
         self.assertTrue(bridge.busy)
         self.assertEqual(bridge.totalSeconds, 120)
         self.assertEqual(bridge.sessionLevel, "light")
@@ -212,6 +219,7 @@ class BridgeTest(unittest.TestCase):
         # 只验证档位解析与不能提前结束，不真正驱动 180 分钟
         heavy_id = next(s["id"] for s in bridge.spaces if s["mode"] == "heavy")
         bridge.startSpace(heavy_id)
+        self._advance_prepare()
         self.assertTrue(bridge.busy)
         self.assertEqual(bridge.sessionLevel, "heavy")
         self.assertTrue(bridge._guard._strict)
@@ -219,7 +227,8 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(bridge.sessionWhitelist, [])
         self.assertEqual(set(bridge._guard._whitelist), set(DEFAULT_WHITELIST))
         self.assertNotIn("steam.exe", bridge._guard._whitelist)
-        self.assertEqual(bridge.totalSeconds, 180 * 60)
+        # 深清默认 1 分钟
+        self.assertEqual(bridge.totalSeconds, 60)
         bridge.stopSession()  # 深清不可提前结束
         self.assertTrue(bridge.busy)
         bridge._session.stop()
@@ -255,6 +264,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(heavy["allowedCount"], 0)
         self.assertFalse(bridge.toggleSpaceAllowedApp("h", "steam.exe", True))
         bridge.startSpace("h")
+        self._advance_prepare()
         self.assertTrue(bridge.busy)
         self.assertEqual(bridge.sessionLevel, "heavy")
         self.assertEqual(set(bridge._guard._whitelist), set(DEFAULT_WHITELIST))

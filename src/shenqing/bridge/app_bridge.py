@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -47,11 +48,12 @@ from ..core.guard import ProcessGuard
 from ..core.session import SessionController, SessionState
 from ..core.spaces import SpaceManager
 from ..core.stats import StatsStore
-from ..services import elevation
+from ..services import elevation, updater
 from ..services.autostart import AutostartManager
 from ..services.lock_hardening import LockHardening
 from ..services.media_smtc import MediaSmtcService
 from ..services.notifications import NotificationService
+from ..paths import app_data_dir
 from ..settings import Settings
 
 logger = logging.getLogger("shenqing.bridge")
@@ -112,6 +114,10 @@ class AppBridge(QObject):
     quitRequested = Signal()
     languageChanged = Signal(str)
     _catalogScanned = Signal(list)
+    #: 自动更新：后台线程 → 主线程
+    _updateChecked = Signal(object, str)
+    _updateProgress = Signal(int)
+    _updateDownloaded = Signal(bool, str)
 
     def __init__(
         self,
@@ -134,6 +140,22 @@ class AppBridge(QObject):
         self._trial_times: list[float] = []
         self._preview_active = False
         self._preview_level = ""
+        # 进入前的 10 秒倒计时（水滴凝聚）
+        self._prepare_active = False
+        self._prepare_remaining = 0
+        self._prepare_space_id = ""
+        self._prepare_mode = ""
+        self._prepare_minutes: int | None = None
+        self._prepare_timer = QTimer(self)
+        self._prepare_timer.setInterval(1000)
+        self._prepare_timer.timeout.connect(self._tick_prepare)
+        # 自动更新状态（idle/checking/available/downloading/ready/error）
+        self._update_state = "idle"
+        self._update_info: dict | None = None
+        self._update_progress = 0
+        self._update_error = ""
+        self._update_download_path: Path | None = None
+        self._update_cancel: updater.CancelToken | None = None
         self._media_info: dict = {}
         self._catalog: list[dict] = load_cached()
         self._catalog_scanning = False
@@ -157,6 +179,9 @@ class AppBridge(QObject):
         self._notifications.register()
 
         self._catalogScanned.connect(self._apply_catalog)
+        self._updateChecked.connect(self._on_update_checked)
+        self._updateProgress.connect(self._on_update_progress)
+        self._updateDownloaded.connect(self._on_update_downloaded)
         self._session.stateChanged.connect(self.stateChanged)
         self._session.stateChanged.connect(self.lockedChanged)
         self._session.tick.connect(self._on_tick)
@@ -603,10 +628,11 @@ class AppBridge(QObject):
         if space is None:
             self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
             return
-        mode = str(space.get("mode") or "")
-        if mode not in {item.value for item in LockLevel}:
-            mode = self.lockLevel
-        self._begin_space_session(space, mode, int(space.get("minutes", 45)))
+        if self._session.state is not SessionState.IDLE:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "已经有正在进行的专注"))
+            return
+        # 先进入 10 秒倒计时（水滴凝聚），期间可取消
+        self._begin_prepare(space)
 
     @Slot(str)
     def startLevel(self, level: str) -> None:
@@ -616,7 +642,10 @@ class AppBridge(QObject):
         minutes = int(self._settings.get("default_minutes", 45))
         # 速启用该档第一张空间做载体（白名单取它，时长仍按设置）
         space = self._spaces.get_by_mode(level) or self._spaces.get_by_mode("medium")
-        self._begin_space_session(space, level, minutes)
+        if self._session.state is not SessionState.IDLE:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "已经有正在进行的专注"))
+            return
+        self._begin_prepare(space, minutes)
 
     @Slot()
     def pauseSession(self) -> None:
@@ -787,6 +816,14 @@ class AppBridge(QObject):
         self.settingsChanged.emit()
 
     # ---------- 遮罩加固（QML 调用） ----------
+    @Slot(bool)
+    def setOverlayTopmostEnabled(self, enabled: bool) -> None:
+        """覆清 dock：拉起白名单应用时暂停/恢复遮罩的定时置顶（不影响防退出加固）。"""
+        try:
+            self._hardening.set_topmost_enabled(bool(enabled))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("切换遮罩置顶失败：%s", exc)
+
     @Slot()
     def overlayOpened(self) -> None:
         if not self.hardeningEnabled:
@@ -1058,6 +1095,78 @@ class AppBridge(QObject):
             for item in THEMES
         ]
 
+    # ================= 进入前 10 秒倒计时（水滴凝聚） =================
+    PREPARE_SECONDS = 10
+
+    @Property(bool, notify=stateChanged)
+    def prepareActive(self) -> bool:
+        return self._prepare_active
+
+    @Property(int, notify=stateChanged)
+    def prepareRemaining(self) -> int:
+        return int(self._prepare_remaining)
+
+    @Property(str, notify=stateChanged)
+    def prepareLevel(self) -> str:
+        return str(self._prepare_mode)
+
+    @Property(str, notify=stateChanged)
+    def prepareSpaceName(self) -> str:
+        space = self._spaces.get(self._prepare_space_id) if self._prepare_space_id else None
+        return str(space.get("name", "")) if space else ""
+
+    @Slot(str)
+    def prepareSpace(self, space_id: str) -> None:
+        """开始 10 秒进入倒计时（可随时 cancelPrepare 取消）。"""
+        space = self._spaces.get(str(space_id or ""))
+        if space is None or self._session.state is not SessionState.IDLE:
+            return
+        self._begin_prepare(space)
+
+    @Slot(str)
+    def prepareMode(self, mode: str) -> None:
+        spaces = [s for s in self._spaces.all() if str(s.get("mode")) == str(mode)]
+        if not spaces:
+            return
+        self._begin_prepare(spaces[0])
+
+    def _begin_prepare(self, space: dict, minutes: int | None = None) -> None:
+        self._prepare_minutes = int(minutes) if minutes else None
+        self._prepare_active = True
+        self._prepare_remaining = int(self.PREPARE_SECONDS)
+        self._prepare_space_id = str(space.get("id") or "")
+        self._prepare_mode = str(space.get("mode") or "")
+        self._prepare_timer.start()
+        self.stateChanged.emit()
+
+    @Slot()
+    def cancelPrepare(self) -> None:
+        if not self._prepare_active:
+            return
+        self._prepare_timer.stop()
+        self._prepare_active = False
+        self._prepare_remaining = 0
+        self._prepare_space_id = ""
+        self._prepare_mode = ""
+        self.stateChanged.emit()
+
+    def _tick_prepare(self) -> None:
+        if not self._prepare_active:
+            return
+        self._prepare_remaining = max(0, self._prepare_remaining - 1)
+        self.stateChanged.emit()
+        if self._prepare_remaining <= 0:
+            space = self._spaces.get(self._prepare_space_id)
+            mode = self._prepare_mode or str((space or {}).get("mode", "medium"))
+            minutes = int(self._prepare_minutes or (space or {}).get("minutes", 45))
+            self._prepare_minutes = None
+            self._prepare_timer.stop()
+            self._prepare_active = False
+            self._prepare_space_id = ""
+            self._prepare_mode = ""
+            self.stateChanged.emit()
+            self._begin_space_session(space, mode, minutes, trial=False)
+
     @Property(bool, notify=stateChanged)
     def trialActive(self) -> bool:
         return self._trial_active
@@ -1088,12 +1197,15 @@ class AppBridge(QObject):
 
     @Slot(str)
     def startMode(self, mode: str) -> None:
-        """按档位开始：用该档第一张空间的时长与白名单。"""
+        """按档位开始：先进入 10 秒倒计时。"""
         space = self._spaces.get_by_mode(mode)
         if space is None:
             self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
             return
-        self._begin_space_session(space, mode, int(space.get("minutes", 45)))
+        if self._session.state is not SessionState.IDLE:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "已经有正在进行的专注"))
+            return
+        self._begin_prepare(space)
 
     @Slot(str)
     def startTrial(self, mode: str) -> None:
@@ -1147,6 +1259,194 @@ class AppBridge(QObject):
             return
         # 通知主程序：应用已拉起，覆清 dock 需要把它显示到遮罩之上
         self.appLaunched.emit(str(exe))
+
+    # ================= 自动更新（GitHub Releases） =================
+    def _set_update_state(self, state: str, error: str = "") -> None:
+        self._update_state = str(state)
+        self._update_error = str(error or "")
+        self.stateChanged.emit()
+
+    @Property(str, notify=stateChanged)
+    def updateState(self) -> str:
+        return self._update_state
+
+    @Property(bool, notify=stateChanged)
+    def updateAvailable(self) -> bool:
+        return self._update_info is not None
+
+    @Property(str, notify=stateChanged)
+    def updateLatestVersion(self) -> str:
+        return str((self._update_info or {}).get("version", ""))
+
+    @Property(str, notify=stateChanged)
+    def updateNotes(self) -> str:
+        return updater.format_notes((self._update_info or {}).get("notes", ""))
+
+    @Property(int, notify=stateChanged)
+    def updateProgress(self) -> int:
+        return int(self._update_progress)
+
+    @Property(str, notify=stateChanged)
+    def updateError(self) -> str:
+        return self._update_error
+
+    @Property(str, notify=stateChanged)
+    def updateAssetName(self) -> str:
+        return str((self._update_info or {}).get("assetName", ""))
+
+    @Property(bool, notify=settingsChanged)
+    def autoUpdate(self) -> bool:
+        return bool(self._settings.get("auto_update", True))
+
+    @Slot(bool)
+    def setAutoUpdate(self, enabled: bool) -> None:
+        self._settings.set("auto_update", bool(enabled))
+        self.settingsChanged.emit()
+
+    def _check_update_worker(self) -> None:
+        info: dict | None = None
+        error = ""
+        try:
+            info = updater.check_latest()
+        except Exception as exc:  # noqa: BLE001 - 后台线程不能崩
+            error = str(exc)
+            logger.warning("检查更新异常：%s", exc)
+        try:
+            self._updateChecked.emit(info, error)
+        except RuntimeError:  # 宿主已销毁
+            pass
+
+    @Slot()
+    def checkUpdate(self) -> None:
+        """手动/自动检查 GitHub 最新 Release（后台线程，不阻塞界面）。"""
+        if self._update_state in ("checking", "downloading"):
+            return
+        self._set_update_state("checking")
+        threading.Thread(
+            target=self._check_update_worker,
+            name="shenqing-update-check",
+            daemon=True,
+        ).start()
+
+    @Slot(object, str)
+    def _on_update_checked(self, info: object, error: str) -> None:
+        if error:
+            self._update_info = None
+            self._set_update_state("error", str(error))
+            self.toast.emit(QCoreApplication.translate("ShenQing", "检查更新失败"))
+            return
+        if not isinstance(info, dict) or not info:
+            self._update_info = None
+            self._set_update_state("idle")
+            return
+        self._update_info = dict(info)
+        self._set_update_state("available")
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "发现新版本 {0}，可在关于页更新").format(
+                str(info.get("version", ""))
+            )
+        )
+
+    def _download_update_worker(
+        self, url: str, dest: Path, cancel: updater.CancelToken
+    ) -> None:
+        ok = False
+        try:
+            ok = updater.download(
+                url,
+                dest,
+                on_progress=lambda value: self._updateProgress.emit(int(value)),
+                cancel=cancel,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("下载更新异常：%s", exc)
+        try:
+            self._updateDownloaded.emit(bool(ok), str(dest))
+        except RuntimeError:  # 宿主已销毁
+            pass
+
+    @Slot()
+    def downloadUpdate(self) -> None:
+        """下载最新安装包（后台线程，可取消）。"""
+        info = self._update_info or {}
+        url = str(info.get("assetUrl") or "")
+        if self._update_state == "downloading":
+            return
+        if not url:
+            self._set_update_state("error", "没有可下载的安装包")
+            self.toast.emit(QCoreApplication.translate("ShenQing", "没有可下载的安装包"))
+            return
+        name = Path(str(info.get("assetName") or "ShenQing-Setup.exe")).name
+        dest = app_data_dir() / "updates" / name
+        self._update_download_path = dest
+        self._update_progress = 0
+        self._update_cancel = updater.CancelToken()
+        self._set_update_state("downloading")
+        threading.Thread(
+            target=self._download_update_worker,
+            args=(url, dest, self._update_cancel),
+            name="shenqing-update-download",
+            daemon=True,
+        ).start()
+
+    @Slot()
+    def cancelUpdateDownload(self) -> None:
+        if self._update_cancel is not None:
+            self._update_cancel.cancel()
+
+    @Slot(int)
+    def _on_update_progress(self, value: int) -> None:
+        self._update_progress = max(0, min(100, int(value)))
+        self.stateChanged.emit()
+
+    @Slot(bool, str)
+    def _on_update_downloaded(self, ok: bool, dest: str) -> None:
+        path = Path(dest) if dest else None
+        if ok and path is not None and path.exists() and path.stat().st_size > 0:
+            self._update_download_path = path
+            self._update_progress = 100
+            self._set_update_state("ready")
+            self.toast.emit(QCoreApplication.translate("ShenQing", "安装包已下载完成"))
+        else:
+            self._update_download_path = None
+            self._set_update_state("error", "下载失败或被取消")
+            self.toast.emit(QCoreApplication.translate("ShenQing", "下载失败或被取消"))
+
+    @Slot()
+    def installUpdate(self) -> None:
+        """启动已下载的安装包；先停看门狗，避免安装期间被自动拉起。"""
+        path = self._update_download_path
+        if self._update_state != "ready" or path is None or not path.exists():
+            self.toast.emit(QCoreApplication.translate("ShenQing", "安装包尚未下载完成"))
+            return
+        try:
+            from ..services import keeper
+
+            keeper.stop_keeper()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("安装前停止看门狗失败：%s", exc)
+        try:
+            os.startfile(str(path))  # noqa: S606 - 用户主动安装更新
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("启动安装程序失败：%s", exc)
+            self.toast.emit(QCoreApplication.translate("ShenQing", "无法启动安装程序"))
+            return
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "安装程序已启动，安装完成后请重新打开深清")
+        )
+
+    @Slot()
+    def openReleasePage(self) -> None:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        page = str((self._update_info or {}).get("pageUrl") or "")
+        url = updater.release_page_url(page)
+        try:
+            QDesktopServices.openUrl(QUrl(url))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("打开更新页面失败：%s", exc)
+            self.toast.emit(QCoreApplication.translate("ShenQing", "无法打开浏览器"))
 
     @Slot(str, result=list)
     def search(self, query: str) -> list[dict]:

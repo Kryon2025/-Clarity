@@ -1,103 +1,136 @@
-# 深清（Clarity）
+<div align="right">
+简体中文 | <a href="/docs/readme/README.en_US.md">English</a>
+</div>
 
-Windows 平台的专注锁机工具：只有一个空间「**清空间**」，三档强度 **浅清 / 覆清 / 深清**；默认纯色主题，可切换清空间浅色与实验性液态玻璃。
+<p align="center">
+  <img width="16%" align="center" src="docs/images/logo.png" alt="logo">
+</p>
+<h1 align="center">
+  深清
+</h1>
+<p align="center">
+  Clarity · 把这件事做完，再抬头
+</p>
 
-## v0.6 变更
+<div align="center">
 
-- **多空间**：浅清 / 覆清可新增多个空间（虚线「＋ 新增空间」卡），每张卡可就地改名、改时长（1–240 分钟）、删 ×、白名单；深清固定一个空间，不可增删改名，只能改时长与白名单。
-- **空间页 = 三个界面**：顶部浏览器式标签 浅清 / 覆清 / 深清，下方两列卡片列表（名称 + 「N 分钟 >」+ 白色「开始」胶囊），参考禅定空间的列表卡片风格。
-- **全局搜索**：窗口右上角搜索框在所有页面可用（Ctrl+K），支持空间 / 主题 / 模式 / 插件 / 设置。
-- **保活**：独立看门狗进程每 2s 检查主进程，被杀后约 2 秒自动重新拉起（主动退出时看门狗自动结束）；新安装默认以最高权限运行并登记最高权限开机自启。
-- 版本 0.6.0。
+[![星标](https://img.shields.io/github/stars/Kryon2025/Clarity?style=for-the-badge&color=orange&label=%E6%98%9F%E6%A0%87)](https://github.com/Kryon2025/Clarity)
+[![当前版本](https://img.shields.io/github/v/release/Kryon2025/Clarity?style=for-the-badge&color=purple&label=%E5%BD%93%E5%89%8D%E7%89%88%E6%9C%AC)](https://github.com/Kryon2025/Clarity/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/Kryon2025/Clarity/total.svg?label=%E4%B8%8B%E8%BD%BD%E9%87%8F&color=green&style=for-the-badge)](https://github.com/Kryon2025/Clarity/releases)
+[![许可](https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF-%E4%B8%93%E6%9C%89-red?style=for-the-badge)](./LICENSE.txt)
+[![平台](https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://github.com/Kryon2025/Clarity/releases)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 
-## v0.5 变更
+</div>
 
-- **三档空间**：浅清 / 覆清 / 深清 各一个空间卡片（两列网格）；浅清/覆清可改空间名，深清名固定、只能改锁定时间；每档独立时长与白名单。
-- **空间页**：顶部横向三张模式卡切换视图；锁定时长滑块 **1–240 分钟**（最短 1 分钟即体验）；预览/体验按钮已移除。
-- **导航分组**：上组 空间/数据/插件/主题，下组 设置/关于（贴底）；新增「关于」页（快捷键、使用说明、帮助反馈占位、许可与数据目录）。
-- **深清档**：全屏遮罩只保留倒计时，不可提前结束。
-- **液态玻璃高光**：高亮块比菜单项大一圈，长按可拖拽、松手吸附回弹。
-- **反馈**：v0.5 暂不提供在线反馈（关于页占位），后续版本接入 GitHub/Gitee。
-- 顶部全局菜单栏按反馈移除；搜索框移到空间页顶部。
+> [!TIP]
+> 深清只有一个空间「**清空间**」，分三档强度：**浅清 / 覆清 / 深清**。选好时长开始专注，时间没到不开门。
+> 支持纯色 / 清空间浅色 / 液态玻璃三套主题，插件系统可以把番茄ToDo、CW2 组件等接进来。
 
-## v0.4 有什么
+![空间页](docs/images/v06_spaces_light.png)
 
-- **清空间（唯一空间）**：不可改名/增删；就地设置专注时长（15–240 分钟，步进 5）与「允许使用的应用」。
-- **三档强度**：浅清（屏蔽黑名单应用的窗口与声音）/ 覆清（额外显示允许应用的 dock）/ 深清（白名单外全部屏蔽，不可提前结束）。
-- **顶部菜单栏 + 全局搜索**：空间 / 主题 / 插件 / 帮助 / 反馈；搜索空间、主题、插件与设置，回车打开第一项。
-- **主题体系**：纯色（默认）/ 清空间浅色 / 液态玻璃（实验性）；玻璃主题下可**长按拖动导航高光**（放大 1.12、松手吸附并弹性回弹）。
-- **预览模式**：只展示遮罩 10 秒假倒计时，不锁机、不写统计；**体验模式**：1 分钟真实专注，可提前结束，每小时最多 5 次。
-- **覆清 dock**：专注时右半屏显示白名单应用图标，点击启动。
-- **防退出加固**：锁定期间隐藏任务栏、屏蔽 Win/Alt+Tab 等系统快捷键，并每 500ms 重新置顶；结束后恢复。
-- **权限**：以管理员身份运行（UAC 一次）、最高权限开机自启（计划任务 ONLOGON+HIGHEST）。
-- **不杀进程**：默认隐藏窗口 + 静音（保留未保存工作），可切回直接结束进程。
-- **插件**：目录即装、SDK/schema/模板/validate；插件可注册导航入口与全屏遮罩组件；内置「番茄同步」（番茄ToDo 数据互通，支持可选回写）与默认禁用的「CW2 全屏组件」。
-- **国际化**：简体中文 + English（设置 → 语言），GitHub Actions 自动更新与编译翻译。
+## 特性
 
-## 界面预览
+- **进入前 10 秒水滴倒计时**：水滴凭空出现、向圆心汇聚并凝结成发光圆环，进入时圆环扩散全屏；期间可随时取消（取消则水滴散开）；
+- **GitHub 自动更新**：启动后自动检查新版本，关于页可手动检查 / 下载 / 安装；
+- **三档空间**：浅清（屏蔽黑名单窗口与声音）/ 覆清（额外显示白名单应用 dock）/ 深清（白名单外全部屏蔽、不可提前结束、只显示倒计时）；
+- **多空间**：浅清 / 覆清可新增多个空间，各自保存名称、锁定时长与白名单；深清固定一个空间，只能改时长；
+- **浏览器式标签页**：空间页顶部三标签切换档位，下面两列卡片列表，卡片上直接改名 / 改时长 / 开始；
+- **全屏专注遮罩**：左侧倒计时、右上灵动岛（SMTC 媒体控制）、覆清档右侧 dock；
+- **主题系统**：纯色（默认）/ 清空间浅色 / 液态玻璃（实验性，长按拖拽高光）；
+- **全局搜索**：窗口右上角常驻，搜空间 / 主题 / 模式 / 插件 / 设置（Ctrl+K）；
+- **防退出加固**：锁定期间隐藏任务栏、屏蔽系统快捷键、每 500ms 重新置顶；结束自动恢复；
+- **保活**：独立看门狗监控主进程，被杀约 2 秒自动拉起；新安装默认最高权限运行并登记最高权限开机自启；
+- **不杀进程**：默认把干扰应用的窗口藏起来 + 静音，保留未保存的工作；
+- **插件系统**：目录即装，插件可注册导航入口与全屏遮罩组件；内置「番茄同步」（番茄ToDo 数据互通）与默认停用的「CW2 全屏组件」；
+- **国际化**：简体中文 / English，GitHub Actions 自动抽取并编译翻译。
 
-![清空间首页](docs/images/v04_home.png)
+## 软件截图
 
-| 主题页 | 浅色主题 |
+| 覆清 · 空间卡片 | 深清 · 纯倒计时 |
 | --- | --- |
-| ![主题页](docs/images/v04_theme_page.png) | ![浅色](docs/images/v04_light.png) |
+| ![覆清](docs/images/v06_spaces_light.png) | ![深清](docs/images/v06_spaces_heavy.png) |
 
-| 液态玻璃拖拽高光 | 覆清 dock（预览） |
+| 关于 · 更新日志 | 液态玻璃拖拽高光 |
 | --- | --- |
-| ![玻璃拖拽](docs/images/v04_glass_drag.png) | ![dock](docs/images/v04_overlay_medium_dock.png) |
+| ![关于](docs/images/v06_about_cw2.png) | ![玻璃](docs/images/v04_glass_drag.png) |
 
-英文版：设置 → Language → English（截图 docs/images/en_main.png、en_settings.png）。
-
-## 技术栈
-
-| 项 | 选择 |
+| 进入前水滴凝聚成环 | 关于 · 检查更新 |
 | --- | --- |
-| 语言 | Python 3.13 |
-| UI | PySide6 6.11 + QML（RinUI 0.4.4 提供窗口壳） |
-| 主题 | 纯色 / 浅色 / 自研 LiquidGlass（ShaderEffectSource + GLSL，qsb 编译） |
-| 媒体/通知 | Windows WinRT（SMTC、Toast + AUMID） |
-| 音频屏蔽 | pycaw（Core Audio） |
-| 平台 | Windows 10 10240+ / 11；PyInstaller onedir zip / 单文件 exe |
+| ![水滴](docs/images/v06_enter_ring_complete.png) | ![更新](docs/images/v07_update_card.png) |
+
+## 安装 & 使用
+
+> [!IMPORTANT]
+> 请到 [**Releases**](https://github.com/Kryon2025/Clarity/releases) 页面下载最新版本。
+
+- **安装包**：下载 `ShenQing-Setup-x.y.z.exe`，双击安装（会请求管理员权限），安装完自动创建桌面 / 开始菜单快捷方式；安装时可勾选「最高权限开机自启」；
+- **绿色版**：下载 `ShenQing-Portable-vx.y.z.zip`，解压后双击 `深清.exe` 即用，无需安装。
+
+使用要点：
+
+- 空间页选好档位与时长 → 点卡片右侧白色「**开始**」胶囊；深清卡为「开始深清」；
+- 专注中按 **Ctrl+K** 全局搜索；深清档不可提前结束；
+- 关闭主窗口只会收进托盘，真正退出请用托盘菜单「退出深清」或速启面板；
+- 数据保存在 `%APPDATA%\ShenQing\`（空间、设置、插件、专注统计），不上传云端；
+- 许可证：[LICENSE.txt](./LICENSE.txt)；第三方组件：[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+
+## 更新日志
+
+见 [CHANGELOG.md](./CHANGELOG.md)（应用内「关于」页也可查看完整更新日志）。
 
 ## 开发
 
 ```powershell
 python -m pip install -r requirements.txt
-python run.py
-python -m unittest discover -s tests -v
-python scripts/i18n.py extract / compile / check
+python run.py                              # 从源码启动
+python -m unittest discover -s tests -v    # 单元 / 集成测试
+$env:QT_QPA_PLATFORM="offscreen"; $env:QT_QUICK_BACKEND="software"; python run.py --smoke
+python scripts/i18n.py extract             # 抽取翻译（compile / check 同理）
 ```
 
-冒烟（离屏）：`$env:QT_QPA_PLATFORM="offscreen"; $env:QT_QUICK_BACKEND="software"; python run.py --smoke`
-
-打包：`powershell -ExecutionPolicy Bypass -File .\scripts\build_exe.ps1 -Mode onedir`
-
-## 安装包与发布
-
-本地已产出：
-
-| 文件 | 说明 |
-| --- | --- |
-| `dist\installer\ShenQing-Setup-0.6.0.exe` | Inno Setup 安装包（安装到 Program Files、桌面/开始菜单快捷方式、可选最高权限开机自启） |
-| `dist\ShenQing-Portable-v0.6.0.zip` | 绿色版（解压双击 `深清.exe` 即用） |
-
-本地重新构建：
+打包：
 
 ```powershell
 python -m PyInstaller --noconfirm --clean packaging/ShenQing.spec
-iscc /DAppVersion=0.6.0 packaging/installer.iss   # 需要 Inno Setup 6
-Compress-Archive -Path "dist/深清/*" -DestinationPath "dist/ShenQing-Portable-v0.6.0.zip" -Force
+iscc /DAppVersion=0.7.0 packaging/installer.iss   # 需要 Inno Setup 6，产出 dist\installer\*Setup*.exe
+Compress-Archive -Path "dist/深清/*" -DestinationPath "dist/ShenQing-Portable-v0.7.0.zip" -Force
 ```
 
-**发布标签自动打包**：`.github/workflows/release.yml` 在推送 `v*` 标签时自动：
-跑单测 + 冒烟 → PyInstaller 打包 → 生成绿色版 zip → choco 安装 Inno Setup 并生成安装包 → 作为附件发布到 GitHub Release（并自动生成 release notes）。
-手动触发（Actions → Release → Run workflow）则把两个产物上传为 workflow artifacts，不发 release。
+推送 `v*` 标签时，[release.yml](.github/workflows/release.yml) 会自动跑测试、打包绿色版与安装包，并把更新日志作为 Release 正文与附件发布。
 
-```bash
-git tag v0.6.0 && git push origin v0.6.0
-```
+## 插件开发
 
-## 文档
+- SDK 说明：[sdk/README.md](./sdk/README.md)，清单 Schema：[sdk/plugin.schema.json](./sdk/plugin.schema.json)
+- 文档：[docs/插件开发.md](./docs/插件开发.md)
+- 模板：[`templates/basic-plugin`](./templates/basic-plugin)（注册导航入口）、[`templates/widget-plugin`](./templates/widget-plugin)（注册全屏组件）
+- 校验：`python -m shenqing.plugins.validate <插件目录>`
+- 安装：把插件目录 / zip 放到 `%APPDATA%\ShenQing\plugins\`，在「插件」页重新扫描即可。
 
-- 功能规格（Obsidian）：`F:\obsidian_note\note\AI 程序创作清单\深清_功能规格.md`（v0.4）
-- [开发说明](docs/开发说明.md)｜[插件开发](docs/插件开发.md)｜[国际化](docs/i18n.md)｜[SDK](sdk/README.md)
+## 反馈 & 贡献
+
+- Bug 反馈 / 功能请求：[Issues](https://github.com/Kryon2025/Clarity/issues)（应用内「关于」页有直达按钮）
+- 讨论：[Discussions](https://github.com/Kryon2025/Clarity/discussions)
+- 欢迎提交 PR；提交前请跑通单元测试与冒烟。
+
+## 协议
+
+本项目（深清 / Clarity）为**专有软件（Proprietary）**，保留所有权利，详情见 [LICENSE.txt](./LICENSE.txt)。
+第三方开源组件按各自许可证授权，详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+
+Copyright © 2025 Kryon.
+
+## 致谢
+
+### 第三方库和框架
+
+- [Qt](https://www.qt.io/) / [PySide6](https://doc.qt.io/qtforpython/)（LGPLv3）
+- [RinUI](https://github.com/RinLit-233-shiroko/RinUI)（MIT）
+- [pywin32](https://github.com/mhammond/pywin32)（PSF-2.0）
+- [pycaw](https://github.com/AndreMiras/pycaw)（MIT）
+- [pyinstaller](https://pyinstaller.org/)（打包工具）
+- [Inno Setup](https://jrsoftware.org/isinfo.php)（安装包制作）
+
+### 设计参考
+
+- 空间卡片与关于页的交互参考 [Class Widgets 2](https://github.com/RinLit-233-shiroko/Class-Widgets-2)

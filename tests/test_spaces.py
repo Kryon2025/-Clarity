@@ -42,7 +42,7 @@ class SpaceManagerTest(unittest.TestCase):
     # ---------- 默认数据 ----------
     def test_defaults_three_spaces(self) -> None:
         manager = SpaceManager(self.path)
-        self.assertEqual(SCHEMA_VERSION, 5)
+        self.assertEqual(SCHEMA_VERSION, 6)
         self.assertEqual([s["mode"] for s in manager.all()], list(MODES))
         self.assertEqual(manager.get_by_mode("light")["name"], "浅清空间")
         self.assertEqual(manager.get_by_mode("medium")["name"], "覆清空间")
@@ -146,7 +146,7 @@ class SpaceManagerTest(unittest.TestCase):
         reloaded = SpaceManager(self.path)
         self.assertEqual(len(reloaded.all()), 4)
         saved = json.loads(self.path.read_text(encoding="utf-8"))
-        self.assertEqual(saved["schemaVersion"], 5)
+        self.assertEqual(saved["schemaVersion"], 6)
         self.assertEqual(len(saved["spaces"]), 4)
         item = next(s for s in saved["spaces"] if s["id"] == extra["id"])
         self.assertEqual(set(item), {"id", "mode", "name", "minutes", "atmosphere", "allowed_apps"})
@@ -200,7 +200,7 @@ class SpaceManagerTest(unittest.TestCase):
         self.assertEqual(len(manager.all()), 3)
         # 迁移后立即按 v5 保存
         saved = json.loads(self.path.read_text(encoding="utf-8"))
-        self.assertEqual(saved["schemaVersion"], 5)
+        self.assertEqual(saved["schemaVersion"], 6)
 
     def test_migrate_v2_main_space_into_medium(self) -> None:
         self._write(

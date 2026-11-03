@@ -39,6 +39,10 @@ class _FakeBridge:
         self.busy = busy
         self.sessionLevel = level
         self.sessionWhitelist = list(whitelist or [])
+        self.topmost_calls: list[bool] = []
+
+    def setOverlayTopmostEnabled(self, enabled: bool) -> None:
+        self.topmost_calls.append(bool(enabled))
 
 
 class DockRevealHelpersTest(unittest.TestCase):
@@ -102,17 +106,18 @@ class DockRevealOverlayTest(unittest.TestCase):
         self.overlay.deleteLater()
 
     def test_reveal_demotes_and_restore_readds(self) -> None:
-        controller = DockRevealController(
-            _FakeBridge(busy=True, level="medium", whitelist=["charmap.exe"])
-        )
+        bridge = _FakeBridge(busy=True, level="medium", whitelist=["charmap.exe"])
+        controller = DockRevealController(bridge)
         try:
             self.assertTrue(self.overlay.flags() & Qt.WindowStaysOnTopHint)
             controller.handle_app_launched("definitely-not-running-xyz.exe")
             self.assertTrue(controller._revealed)
             self.assertFalse(self.overlay.flags() & Qt.WindowStaysOnTopHint)
+            self.assertEqual(bridge.topmost_calls[-1], False)
             controller.restore()
             self.assertFalse(controller._revealed)
             self.assertTrue(self.overlay.flags() & Qt.WindowStaysOnTopHint)
+            self.assertEqual(bridge.topmost_calls[-1], True)
         finally:
             controller.restore()
 

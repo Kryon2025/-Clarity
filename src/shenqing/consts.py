@@ -8,7 +8,10 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.6.0"
+APP_VERSION = "0.7.0"
+
+#: GitHub 仓库（自动更新与反馈入口用）
+GITHUB_REPO = "Kryon2025/Clarity"
 
 #: 唯一空间的名字（不可改名）
 SPACE_NAME = "清空间"
@@ -36,6 +39,25 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.7.0",
+        "date": "2025-11-05",
+        "tag": "",
+        "items": [
+            "新增进入前的 10 秒「水滴凝聚」倒计时：水滴凭空出现、向圆心汇聚并凝结为发光圆环，进入时圆环扩散至全屏；期间可随时取消，取消时水滴向外散开",
+            "深清空间默认时长改为 1 分钟（旧数据自动迁移），时长滑块最短 1 分钟",
+            "支持从 GitHub 自动更新：启动后自动检查新版本，关于页可手动检查 / 下载 / 安装",
+            "关于页新增「许可证」「第三方组件」入口；仓库新增 LICENSE.txt、THIRD_PARTY_NOTICES.md、CHANGELOG.md",
+            "新增发布流程：推送 v* 标签自动运行测试、打包绿色版与安装包，并把更新日志作为 Release 正文",
+        ],
+        "items_en": [
+            "New 10-second droplet countdown before focus: droplets appear from nothing, converge and condense into a glowing ring, which expands to fullscreen on entry; cancel anytime and the droplets scatter outward",
+            "Deep space now defaults to 1 minute (existing data migrates automatically); the duration slider minimum is 1 minute",
+            "GitHub auto-update: checks for new releases after startup, with manual check / download / install on the About page",
+            "About page gained License and Third-party buttons; the repo now ships LICENSE.txt, THIRD_PARTY_NOTICES.md and CHANGELOG.md",
+            "New release pipeline: pushing a v* tag runs tests, packages the portable zip and installer, and uses the changelog as the release body",
+        ],
+    },
     {
         "version": "0.6.0",
         "date": "2025-11-03",

@@ -21,6 +21,9 @@ Item {
     readonly property string appNameText: (typeof App !== "undefined" && App.appName !== undefined)
                                           ? String(App.appName) : qsTr("深清")
     readonly property string repoUrl: "https://github.com/Kryon2025/Clarity"
+    readonly property string licenseUrl: repoUrl + "/blob/main/LICENSE.txt"
+    readonly property string noticesUrl: repoUrl + "/blob/main/THIRD_PARTY_NOTICES.md"
+    readonly property string changelogUrl: repoUrl + "/blob/main/CHANGELOG.md"
 
     // ---------- 更新日志 ----------
     // 展开状态按版本号记录（语言切换重建列表时仍保留）
@@ -69,19 +72,95 @@ Item {
         page.expandTick++
     }
 
-    // ---------- 检查更新（后端未接：本地提示） ----------
+    // ---------- GitHub 自动更新 ----------
+    readonly property string updateState: (typeof App !== "undefined" && App.updateState !== undefined)
+                                           ? String(App.updateState) : "idle"
+    readonly property bool updateAvailable: (typeof App !== "undefined" && App.updateAvailable === true)
+    readonly property string updateVersion: (typeof App !== "undefined" && App.updateLatestVersion !== undefined)
+                                            ? String(App.updateLatestVersion) : ""
+    readonly property string updateNotes: (typeof App !== "undefined" && App.updateNotes !== undefined)
+                                          ? String(App.updateNotes) : ""
+    readonly property int updateProgress: (typeof App !== "undefined" && App.updateProgress !== undefined)
+                                          ? Math.max(0, Math.min(100, Number(App.updateProgress))) : 0
+    readonly property string updateError: (typeof App !== "undefined" && App.updateError !== undefined)
+                                          ? String(App.updateError) : ""
+    readonly property string updateAssetName: (typeof App !== "undefined" && App.updateAssetName !== undefined)
+                                              ? String(App.updateAssetName) : ""
+    readonly property bool hasAutoUpdateSetting: (typeof App !== "undefined" && App.autoUpdate !== undefined)
+    readonly property bool autoUpdateEnabled: (typeof App !== "undefined" && App.autoUpdate === true)
+    readonly property bool updateCardVisible: page.updateState === "available"
+                                              || page.updateState === "downloading"
+                                              || page.updateState === "ready"
+                                              || page.updateState === "error"
+
+    // 仅 idle 时用一行轻提示告知「已是最新」
+    property bool manualCheck: false
     property bool updateHintVisible: false
     property string updateHintText: ""
     Timer {
         id: updateHintTimer
-        interval: 2800
+        interval: 3000
         repeat: false
         onTriggered: page.updateHintVisible = false
     }
-    function checkUpdate() {
-        page.updateHintText = qsTr("已是最新版本 v%1 · 自动更新将在后续版本提供").arg(page.appVersion)
+
+    function updateTitle() {
+        if (page.updateState === "available") return qsTr("发现新版本")
+        if (page.updateState === "downloading") return qsTr("正在下载更新")
+        if (page.updateState === "ready") return qsTr("更新已就绪")
+        return qsTr("更新检查失败")
+    }
+
+    function showUpToDateHint() {
+        page.updateHintText = qsTr("已是最新版本 v%1").arg(page.appVersion)
         page.updateHintVisible = true
         updateHintTimer.restart()
+    }
+
+    function checkUpdate() {
+        page.updateHintVisible = false
+        if (typeof App !== "undefined" && typeof App.checkUpdate === "function") {
+            page.manualCheck = true
+            App.checkUpdate()
+        } else {
+            page.showUpToDateHint()
+        }
+    }
+
+    function downloadUpdate() {
+        if (typeof App !== "undefined" && typeof App.downloadUpdate === "function")
+            App.downloadUpdate()
+    }
+
+    function cancelUpdateDownload() {
+        if (typeof App !== "undefined" && typeof App.cancelUpdateDownload === "function")
+            App.cancelUpdateDownload()
+    }
+
+    function installUpdate() {
+        if (typeof App !== "undefined" && typeof App.installUpdate === "function")
+            App.installUpdate()
+    }
+
+    function openReleasePage() {
+        if (typeof App !== "undefined" && typeof App.openReleasePage === "function")
+            App.openReleasePage()
+    }
+
+    function setAutoUpdate(enabled) {
+        if (typeof App !== "undefined" && typeof App.setAutoUpdate === "function")
+            App.setAutoUpdate(!!enabled)
+    }
+
+    onUpdateStateChanged: {
+        if (page.updateState === "checking") {
+            page.updateHintVisible = false
+        } else if (page.updateState === "idle" && page.manualCheck) {
+            page.manualCheck = false
+            page.showUpToDateHint()
+        } else if (page.updateState !== "checking") {
+            page.manualCheck = false
+        }
     }
 
     function openFeedback(kind) {
@@ -241,11 +320,13 @@ Item {
                         spacing: 10
 
                         GlassButton {
-                            text: qsTr("检查更新")
+                            objectName: "CheckUpdateButton"
+                            text: page.updateState === "checking" ? qsTr("检查中…") : qsTr("检查更新")
                             tone: "tinted"
                             fontSize: 13
                             padH: 18
                             minHeight: 36
+                            enabled: page.updateState !== "checking" && page.updateState !== "downloading"
                             onClicked: page.checkUpdate()
                         }
 
@@ -275,9 +356,27 @@ Item {
                             minHeight: 36
                             onClicked: page.openFeedback("bug")
                         }
+
+                        GlassButton {
+                            text: qsTr("许可证")
+                            tone: "ghost"
+                            fontSize: 13
+                            padH: 18
+                            minHeight: 36
+                            onClicked: Qt.openUrlExternally(page.licenseUrl)
+                        }
+
+                        GlassButton {
+                            text: qsTr("第三方组件")
+                            tone: "ghost"
+                            fontSize: 13
+                            padH: 18
+                            minHeight: 36
+                            onClicked: Qt.openUrlExternally(page.noticesUrl)
+                        }
                     }
 
-                    // 检查更新的本地提示（后端暂未接自动更新）
+                    // 已是最新版本时的轻提示（idle 状态）
                     Text {
                         width: parent.width
                         text: page.updateHintText
@@ -289,6 +388,312 @@ Item {
                         Behavior on opacity {
                             enabled: page.animationsEnabled !== false
                             NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                        }
+                    }
+                }
+            }
+
+            // ================= 更新卡片（仅 available / downloading / ready / error 时显示） =================
+            Item {
+                id: updateCardWrap
+                objectName: "UpdateCard"
+                width: pageColumn.width
+                height: page.updateCardVisible ? updateCardContent.height : 0
+                opacity: page.updateCardVisible ? 1 : 0
+                visible: opacity > 0.01
+                clip: true
+
+                Behavior on height {
+                    enabled: page.animationsEnabled !== false
+                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                }
+                Behavior on opacity {
+                    enabled: page.animationsEnabled !== false
+                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                }
+
+                GlassCard {
+                    id: updateCardContent
+                    width: parent.width
+                    height: updateCardColumn.implicitHeight + 40
+                    radius: 22
+                    interactive: false
+                    glassSource: page.glassSource
+
+                    Column {
+                        id: updateCardColumn
+                        x: 20
+                        y: 20
+                        width: parent.width - 40
+                        spacing: 12
+
+                        Item {
+                            width: parent.width
+                            height: 26
+
+                            Row {
+                                id: updateTitleRow
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 9
+
+                                Glyph {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    kind: "download"
+                                    size: 16
+                                    color: AppTheme.accent
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: page.updateTitle()
+                                    color: AppTheme.textPrimary
+                                    font.pixelSize: 16
+                                    font.weight: Font.DemiBold
+                                    font.family: C.numFont
+                                }
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: page.updateVersion !== ""
+                                text: "v" + page.updateVersion
+                                color: AppTheme.accent
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                font.family: C.numFont
+                            }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            color: AppTheme.divider
+                        }
+
+                        // ---------- 发现新版本 ----------
+                        Column {
+                            visible: page.updateState === "available"
+                            width: parent.width
+                            spacing: 10
+
+                            Text {
+                                width: parent.width
+                                text: qsTr("发现新版本 v%1（当前 v%2）").arg(page.updateVersion).arg(page.appVersion)
+                                color: AppTheme.textPrimary
+                                font.pixelSize: 14
+                                font.family: C.numFont
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Text {
+                                text: qsTr("更新说明")
+                                color: AppTheme.textSecondary
+                                font.pixelSize: 12
+                                font.family: C.numFont
+                            }
+
+                            // 更新说明：最多显示 4 行，更多内容可在框内滚动
+                            Flickable {
+                                width: parent.width
+                                height: Math.min(noteText.implicitHeight,
+                                                 Math.round(noteText.font.pixelSize * 1.35 * 4))
+                                contentWidth: width
+                                contentHeight: noteText.implicitHeight
+                                clip: true
+                                boundsBehavior: Flickable.StopAtBounds
+                                flickableDirection: Flickable.VerticalFlick
+
+                                Text {
+                                    id: noteText
+                                    width: parent.width
+                                    text: page.updateNotes !== "" ? page.updateNotes : qsTr("暂无更新说明")
+                                    color: AppTheme.textSecondary
+                                    font.pixelSize: 12
+                                    font.family: C.numFont
+                                    wrapMode: Text.WordWrap
+                                    lineHeight: 1.35
+                                }
+                            }
+
+                            Row {
+                                spacing: 10
+
+                                GlassButton {
+                                    text: qsTr("下载更新")
+                                    tone: "accent"
+                                    fontSize: 13
+                                    padH: 18
+                                    minHeight: 34
+                                    onClicked: page.downloadUpdate()
+                                }
+
+                                GlassButton {
+                                    text: qsTr("前往发布页")
+                                    tone: "ghost"
+                                    fontSize: 13
+                                    padH: 18
+                                    minHeight: 34
+                                    onClicked: page.openReleasePage()
+                                }
+                            }
+                        }
+
+                        // ---------- 下载中 ----------
+                        Column {
+                            visible: page.updateState === "downloading"
+                            width: parent.width
+                            spacing: 10
+
+                            Text {
+                                width: parent.width
+                                text: qsTr("正在下载 v%1，请稍候…").arg(page.updateVersion)
+                                color: AppTheme.textPrimary
+                                font.pixelSize: 14
+                                font.family: C.numFont
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: 10
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: height / 2
+                                    color: AppTheme.glass ? "#1AFFFFFF" : AppTheme.divider
+                                    border.width: 1
+                                    border.color: AppTheme.cardBorder
+                                }
+
+                                Rectangle {
+                                    width: Math.max(0, Math.min(parent.width,
+                                                                parent.width * page.updateProgress / 100))
+                                    height: parent.height
+                                    radius: height / 2
+                                    gradient: Gradient {
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: "#2B86FF" }
+                                        GradientStop { position: 0.55; color: "#2ED3C6" }
+                                        GradientStop { position: 1.0; color: "#7FE7DA" }
+                                    }
+                                    Behavior on width {
+                                        enabled: page.animationsEnabled !== false
+                                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                    }
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 12
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: qsTr("已下载 %1%").arg(Math.round(page.updateProgress))
+                                    color: AppTheme.textSecondary
+                                    font.pixelSize: 12
+                                    font.family: C.numFont
+                                }
+
+                                GlassButton {
+                                    text: qsTr("取消")
+                                    tone: "ghost"
+                                    fontSize: 12
+                                    padH: 16
+                                    minHeight: 30
+                                    onClicked: page.cancelUpdateDownload()
+                                }
+                            }
+                        }
+
+                        // ---------- 已下载完成 ----------
+                        Column {
+                            visible: page.updateState === "ready"
+                            width: parent.width
+                            spacing: 10
+
+                            Text {
+                                width: parent.width
+                                text: qsTr("安装包已下载完成")
+                                color: AppTheme.textPrimary
+                                font.pixelSize: 14
+                                font.family: C.numFont
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Text {
+                                width: parent.width
+                                visible: page.updateAssetName !== ""
+                                text: qsTr("文件：%1").arg(page.updateAssetName)
+                                color: AppTheme.textTertiary
+                                font.pixelSize: 11
+                                font.family: C.numFont
+                                elide: Text.ElideRight
+                            }
+
+                            Row {
+                                spacing: 10
+
+                                GlassButton {
+                                    text: qsTr("安装并重启")
+                                    tone: "accent"
+                                    fontSize: 13
+                                    padH: 18
+                                    minHeight: 34
+                                    onClicked: page.installUpdate()
+                                }
+
+                                GlassButton {
+                                    text: qsTr("前往发布页")
+                                    tone: "ghost"
+                                    fontSize: 13
+                                    padH: 18
+                                    minHeight: 34
+                                    onClicked: page.openReleasePage()
+                                }
+                            }
+                        }
+
+                        // ---------- 检查失败 ----------
+                        Column {
+                            visible: page.updateState === "error"
+                            width: parent.width
+                            spacing: 10
+
+                            Text {
+                                width: parent.width
+                                text: qsTr("检查更新失败：%1").arg(page.updateError !== ""
+                                                                  ? page.updateError
+                                                                  : qsTr("未知错误"))
+                                color: AppTheme.danger
+                                font.pixelSize: 13
+                                font.family: C.numFont
+                                wrapMode: Text.WordWrap
+                            }
+
+                            Row {
+                                spacing: 10
+
+                                GlassButton {
+                                    text: qsTr("重试")
+                                    tone: "tinted"
+                                    fontSize: 13
+                                    padH: 18
+                                    minHeight: 34
+                                    onClicked: page.checkUpdate()
+                                }
+
+                                GlassButton {
+                                    text: qsTr("前往发布页")
+                                    tone: "ghost"
+                                    fontSize: 13
+                                    padH: 18
+                                    minHeight: 34
+                                    onClicked: page.openReleasePage()
+                                }
+                            }
                         }
                     }
                 }
@@ -655,6 +1060,49 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            // ================= 启动时自动检查更新（后端有接口才显示） =================
+            GlassCard {
+                id: autoUpdateCard
+                objectName: "AutoUpdateCard"
+                visible: page.hasAutoUpdateSetting
+                width: pageColumn.width
+                height: visible ? 64 : 0
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 9
+
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "refresh"
+                        size: 15
+                        color: AppTheme.textSecondary
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("启动时自动检查更新")
+                        color: AppTheme.textPrimary
+                        font.pixelSize: 13
+                        font.family: C.numFont
+                    }
+                }
+
+                GlassSwitch {
+                    objectName: "AutoUpdateSwitch"
+                    anchors.right: parent.right
+                    anchors.rightMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: page.autoUpdateEnabled
+                    onClicked: page.setAutoUpdate(!page.autoUpdateEnabled)
                 }
             }
 

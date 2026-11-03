@@ -95,6 +95,9 @@ class LockHardening(QObject):
         self._hidden_taskbars: list[int] = []
         self._hook = None
         self._hook_proc = None
+        # v0.6：覆清 dock 拉起白名单应用时临时暂停「反复置顶」，否则遮罩每 500ms
+        # 会把应用重新压到下面；任务栏隐藏与键盘钩子保持不变。
+        self._topmost_enabled = True
         self._topmost_timer = QTimer(self)
         self._topmost_timer.setInterval(500)
         self._topmost_timer.timeout.connect(self._reassert_topmost)
@@ -115,6 +118,12 @@ class LockHardening(QObject):
             self._install_hook()
         self._topmost_timer.start()
         self._reassert_topmost()
+
+    def set_topmost_enabled(self, enabled: bool) -> None:
+        """暂停/恢复「定时把遮罩拉回最前」。不影响隐藏任务栏与键盘钩子。"""
+        self._topmost_enabled = bool(enabled)
+        if self._topmost_enabled:
+            self._reassert_topmost()
 
     def deactivate(self) -> None:
         if not self._active:
@@ -146,6 +155,8 @@ class LockHardening(QObject):
     # ---------- 置顶 ----------
     def _reassert_topmost(self) -> None:
         if not self._active or not self._hwnd or user32 is None:
+            return
+        if not self._topmost_enabled:
             return
         try:
             user32.SetWindowPos(
