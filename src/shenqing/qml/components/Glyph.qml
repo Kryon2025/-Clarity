@@ -1,11 +1,12 @@
 import QtQuick
+import "../theme"
 import "Constants.js" as C
 
 // 纯 Canvas 矢量图标：不依赖 RinUI 图标字体（该字体在本机运行时未必加载成功）
 Canvas {
     id: glyph
     property string kind: "gear"
-    property color color: C.textPrimary
+    property color color: AppTheme.textPrimary
     property real size: 20
     property real strokeWidth: Math.max(1.4, size * 0.085)
 

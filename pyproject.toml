@@ -34,6 +34,7 @@ shenqing = [
     "qml/**/*.frag",
     "qml/**/*.vert",
     "plugins/builtin/*/*.json",
+    "plugins/builtin/**/*.qml",
     "plugins/builtin/*/*.py",
     "plugins/builtin/*/*.md",
 ]

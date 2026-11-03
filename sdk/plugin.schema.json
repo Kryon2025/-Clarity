@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shenqing.local/sdk/plugin.schema.json",
+  "title": "深清插件清单（plugin.json）",
+  "description": "深清（ShenQing）插件清单格式。宿主会加载 entry 里的 class Plugin，并调用生命周期钩子。字段规则与 shenqing.plugins.api.PluginManifest 的校验保持一致。",
+  "type": "object",
+  "required": ["id", "name", "version", "api_version", "entry"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "插件唯一 id，建议反向域名，例如 com.example.hello。只允许字母、数字、点、下划线、短横线，最长 128。",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "not": {
+        "pattern": "\\.\\."
+      }
+    },
+    "name": {
+      "type": "string",
+      "description": "显示名（插件页列表）。",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "description": "插件版本，建议语义化版本，例如 1.0.0。",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "api_version": {
+      "type": "string",
+      "description": "依赖的插件 API 版本，例如 0.1。宿主 0.1 只接受主版本为 0 的插件。",
+      "pattern": "^\\d+"
+    },
+    "entry": {
+      "type": "string",
+      "description": "入口文件相对路径，必须在插件目录内且以 .py 结尾，默认 main.py。",
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\.\\.)[^\\\\]*\\.py$"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者。"
+    },
+    "description": {
+      "type": "string",
+      "description": "一句话说明，显示在插件页。"
+    },
+    "homepage": {
+      "type": "string",
+      "description": "项目主页 / 仓库地址。"
+    },
+    "icon": {
+      "type": "string",
+      "description": "插件图标，插件目录内的相对路径，例如 icon.png。建议 PNG / SVG，边长 64-256。",
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\.\\.)[^\\\\]+$"
+    },
+    "default_enabled": {
+      "type": "boolean",
+      "description": "首次安装是否默认启用。false 表示安装后默认停用（写入宿主 disabled_plugins），用户可在插件页手动启用。",
+      "default": true
+    }
+  },
+  "additionalProperties": true
+}

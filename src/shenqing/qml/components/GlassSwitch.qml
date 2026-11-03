@@ -1,8 +1,10 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
-// 液态玻璃胶囊开关。轨道 = 玻璃 pill，滑块 = 独立圆形玻璃珠。
+// 胶囊开关。glass 主题：轨道 = 玻璃 pill，滑块 = 独立圆形玻璃珠；
+// solid / light 主题：平面轨道 + 实心圆钮，不渲染折射/噪点。
 // checked 只读绑定（由 App 状态驱动），点击只发 clicked()，避免内部赋值破坏绑定。
 Item {
     id: root
@@ -22,6 +24,7 @@ Item {
         return null
     }
 
+    readonly property bool useGlass: AppTheme.glass && root.glassSource !== null
     readonly property bool hovered: pointer.containsMouse
     property bool held: false
 
@@ -30,11 +33,28 @@ Item {
     implicitWidth: 50
     implicitHeight: 30
 
+    // 纯色/浅色按下时轻微缩放
+    scale: !root.useGlass && pointer.pressed && root.interactive ? 0.97 : 1.0
+    Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
-    // ---------- 轨道 ----------
+    // ---------- 平面轨道（solid / light） ----------
+    Rectangle {
+        anchors.fill: parent
+        visible: !root.useGlass
+        radius: height / 2
+        color: {
+            if (root.checked) return AppTheme.accentSoft
+            return root.hovered ? AppTheme.buttonBgAlt : AppTheme.chipBg
+        }
+        border.width: 1
+        border.color: root.checked ? AppTheme.accentSoft : AppTheme.cardBorder
+        Behavior on color { ColorAnimation { duration: 140 } }
+    }
+
+    // ---------- 玻璃轨道 ----------
     LiquidGlass {
         anchors.fill: parent
-        visible: root.glassSource !== null
+        visible: root.useGlass
         sourceItem: root.glassSource
         radius: height / 2
         depth: 0.7
@@ -43,27 +63,15 @@ Item {
         highlight: root.hovered ? 0.9 : 0.6
         whiten: root.checked ? 0.06 : 0.02
         tintAlpha: root.checked ? 0.26 : 0.24
-        tint: root.checked ? C.accentSoft : C.glassTint
+        tint: root.checked ? AppTheme.accentSoft : AppTheme.glassTint
         sheen: 0.4
         hover: root.held ? 0.3 : 0
     }
 
+    // 玻璃轨道壳描边
     Rectangle {
         anchors.fill: parent
-        visible: root.glassSource === null
-        radius: height / 2
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: root.checked ? "#5B8CFF" : "#22FFFFFF" }
-            GradientStop { position: 1.0; color: root.checked ? "#3A66F0" : "#18FFFFFF" }
-        }
-        border.width: 1
-        border.color: root.checked ? "#4DFFFFFF" : "#2BFFFFFF"
-    }
-
-    // 轨道壳描边
-    Rectangle {
-        anchors.fill: parent
-        visible: root.glassSource !== null
+        visible: root.useGlass
         radius: height / 2
         color: "transparent"
         border.width: 1
@@ -71,7 +79,7 @@ Item {
         Behavior on border.color { ColorAnimation { duration: 160 } }
     }
 
-    // ---------- 玻璃滑块 ----------
+    // ---------- 滑块 ----------
     Item {
         id: knobHolder
         width: 24
@@ -84,7 +92,7 @@ Item {
 
         LiquidGlass {
             anchors.fill: parent
-            visible: root.glassSource !== null
+            visible: root.useGlass
             sourceItem: root.glassSource
             radius: knobHolder.width / 2
             depth: 0.6
@@ -98,12 +106,14 @@ Item {
             hover: root.held ? 0.4 : 0
         }
 
+        // 平面主题的圆钮：白底 + 细边，浅色主题里也能看清
         Rectangle {
             anchors.fill: parent
-            visible: root.glassSource === null
+            visible: !root.useGlass
             radius: width / 2
-            color: "#FFFFFF"
-            opacity: root.checked ? 1.0 : 0.92
+            color: AppTheme.light ? "#FFFFFF" : "#F2FBFD"
+            border.width: 1
+            border.color: AppTheme.light ? AppTheme.cardBorderStrong : "#33FFFFFF"
         }
 
         // 玻璃珠的壳描边 + 一点内阴影，保证在深色轨道上也看得见
@@ -112,7 +122,7 @@ Item {
             radius: width / 2
             color: "transparent"
             border.width: 1
-            border.color: root.glassSource === null ? "#00FFFFFF" : "#99FFFFFF"
+            border.color: root.useGlass ? "#99FFFFFF" : "transparent"
         }
     }
 

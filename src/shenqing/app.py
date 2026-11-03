@@ -8,7 +8,14 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QLockFile, QTimer, QtMsgType, QUrl, qInstallMessageHandler
+from PySide6.QtCore import (
+    QCoreApplication,
+    QLockFile,
+    QTimer,
+    QtMsgType,
+    QUrl,
+    qInstallMessageHandler,
+)
 from PySide6.QtQml import QQmlComponent
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
@@ -19,7 +26,8 @@ from .bridge.app_bridge import AppBridge
 from .i18n import Translator
 from .consts import APP_ALIAS, APP_ID, APP_NAME, APP_VERSION
 from .paths import app_data_dir, qml_dir, qml_file
-from .services import elevation
+from .services import elevation, keeper
+from .services.dock_reveal import DockRevealController
 from .services.lock_hardening import restore_taskbars
 from .services.logging_setup import setup_logging
 from .services.tray import TrayController, app_icon_path
@@ -63,17 +71,32 @@ def _message_handler(mode, context, message: str) -> None:  # noqa: ANN001
 def _parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     parser = argparse.ArgumentParser(prog=APP_NAME, description=f"{APP_NAME}（{APP_ALIAS}）专注锁机工具")
     parser.add_argument("--smoke", action="store_true", help="离屏冒烟测试：加载界面、截图后退出")
+    parser.add_argument("--restarted", action="store_true", help="由保活看门狗重新拉起")
+    parser.add_argument("--autostart", action="store_true", help="由计划任务/开机自启拉起")
     parser.add_argument("--theme", choices=["Auto", "Light", "Dark"], default=None)
     return parser.parse_known_args(argv[1:] if argv else [])
 
 
-def _single_instance_lock(retries: int = 12, interval_ms: int = 400) -> QLockFile | None:
-    """拿单实例锁；提权重启时旧进程还在退出，所以重试几秒。"""
+def _single_instance_lock(
+    retries: int = 12,
+    interval_ms: int = 400,
+    restarted: bool = False,
+) -> QLockFile | None:
+    """拿单实例锁；提权重启时旧进程还在退出，所以重试几秒。
+
+    --restarted 表示本进程由看门狗拉起，旧进程是被强杀的，锁文件大概率已失效：
+    首次失败时主动清理一次陈旧锁，避免保活变成「反复拉起又退出」。
+    """
     lock = QLockFile(str(app_data_dir() / "shenqing.lock"))
     lock.setStaleLockTime(0)
-    for _ in range(max(1, retries)):
+    for attempt in range(max(1, retries)):
         if lock.tryLock(100):
             return lock
+        if restarted and attempt == 0:
+            try:
+                lock.removeStaleLockFile()
+            except Exception:  # noqa: BLE001
+                pass
         time.sleep(interval_ms / 1000.0)
     return None
 
@@ -120,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
 
     qInstallMessageHandler(_message_handler)
 
-    lock = _single_instance_lock()
+    lock = _single_instance_lock(restarted=args.restarted)
     if lock is None and not args.smoke:
         print("深清已经在运行了（单实例模式）", file=sys.stderr)
         return 0
@@ -128,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings()
     if args.smoke:
         os.environ.setdefault("SHENQING_NO_SCAN", "1")
+    else:
+        _apply_first_run_defaults(settings)
 
     # 管理员模式：以最高权限启动（UAC 确认一次），失败则按普通权限继续
     if bool(settings.get("admin_mode", False)) and not elevation.is_admin() and not args.smoke:
@@ -141,7 +166,8 @@ def main(argv: list[str] | None = None) -> int:
     window = RinUIWindow()  # 先建引擎，绑定上下文对象后再加载 QML
     window.engine.rootContext().setContextProperty("App", bridge)
 
-    theme_name = args.theme or str(settings.get("theme", "Auto"))
+    theme_mode = str(settings.get("theme_mode", "solid"))
+    theme_name = args.theme or ("Light" if theme_mode == "light" else "Dark")
     try:
         window.setTheme(Theme(theme_name))
     except (ValueError, KeyError):
@@ -190,40 +216,20 @@ def main(argv: list[str] | None = None) -> int:
                 logging.warning("速启面板加载失败：%s", component.errorString())
                 return
             panel_holder["panel"] = panel
-        visible = bool(panel.property("visible"))
-        if visible:
-            panel.setProperty("visible", False)
-            return
-        # 位置：托盘图标上方居中，贴屏幕边界时翻到上方/夹紧
-        width = int(panel.property("width") or 380)
-        height = int(panel.property("height") or 480)
-        rect = tray.tray_geometry() if tray is not None else None
-        if rect is None:
-            from PySide6.QtGui import QCursor
+        # 位置：托盘图标/光标附近；面板内部会做边界翻转
+        # 通过 requestTick 触发面板的 toggleAt(x, y)（幂等显示，不会把自己关掉）
+        from PySide6.QtGui import QCursor
 
-            cursor = QCursor.pos()
-            x = cursor.x() - width // 2
-            y = cursor.y() - height - 12
-            screen = app.primaryScreen().availableGeometry()
-            if y < screen.top():
-                y = cursor.y() + 12
-            x = max(screen.left() + 4, min(x, screen.right() - width - 4))
-            panel.setProperty("x", x)
-            panel.setProperty("y", y)
+        rect = tray.tray_geometry() if tray is not None else None
+        if rect is not None:
+            anchor_x = rect.center().x()
+            anchor_y = rect.top()
         else:
-            screen = app.primaryScreen().availableGeometry()
-            x = rect.center().x() - width // 2
-            y = rect.top() - height - 10
-            if y < screen.top():
-                y = rect.bottom() + 10
-            x = max(screen.left() + 4, min(x, screen.right() - width - 4))
-            panel.setProperty("x", x)
-            panel.setProperty("y", y)
-        panel.setProperty("visible", True)
-        try:
-            panel.requestActivate()
-        except AttributeError:
-            pass
+            cursor = QCursor.pos()
+            anchor_x, anchor_y = cursor.x(), cursor.y()
+        panel.setProperty("requestX", anchor_x)
+        panel.setProperty("requestY", anchor_y)
+        panel.setProperty("requestTick", int(panel.property("requestTick") or 0) + 1)
 
     tray: TrayController | None = None
     if not args.smoke:
@@ -246,6 +252,20 @@ def main(argv: list[str] | None = None) -> int:
             and bridge.busy
             and panel_holder["panel"].setProperty("visible", False)
         )
+
+    if not args.smoke:
+        # 保活：写 keeper.json 并起独立看门狗；正常退出时结束看门狗
+        if keeper.start_keeper():
+            logging.info("保活看门狗已启动")
+        else:
+            logging.info("保活看门狗未启动")
+        app.aboutToQuit.connect(keeper.stop_keeper)
+        # 覆清 dock：白名单应用启动后要显示在 always-on-top 遮罩之上（不退出专注）
+        dock_reveal = setup_dock_reveal(app, bridge)
+        logging.info("覆清 dock 显示控制器已就绪：%s", dock_reveal is not None)
+        # 首次运行提示：默认最高权限 + 最高权限自启
+        if settings.get("elevated_bootstrap"):
+            _bootstrap_elevated(settings, bridge)
 
     if args.smoke:
         QTimer.singleShot(3000, lambda: _smoke_finish(app, window))
@@ -273,10 +293,65 @@ def _show_window(window: RinUIWindow) -> None:
     root.requestActivate()
 
 
+def setup_dock_reveal(app: QApplication, bridge: AppBridge) -> DockRevealController:
+    """把「覆清 dock 应用显示到遮罩之上」的控制器接到桥上（lifecycle 挂在 app 下）。"""
+    controller = DockRevealController(bridge, parent=app)
+    bridge.appLaunched.connect(controller.handle_app_launched)
+    bridge.stateChanged.connect(controller.sync_session)
+    bridge.lockedChanged.connect(controller.sync_session)
+    app.aboutToQuit.connect(controller.restore)
+    return controller
+
+
+def _apply_first_run_defaults(settings: Settings) -> bool:
+    """v0.6：首次运行默认以最高权限运行，并标记待登记最高权限自启。
+
+    返回是否首次运行。提权与登记计划任务都在主流程里做（失败静默）。
+    """
+    if not getattr(settings, "is_new", False):
+        return False
+    settings.set("admin_mode", True)
+    settings.set("elevated_bootstrap", True)
+    return True
+
+
+def _bootstrap_elevated(settings: Settings, bridge: AppBridge) -> None:
+    """首次运行：登记最高权限开机自启（失败静默），并 toast 说明默认最高权限。"""
+    ok = False
+    message = ""
+    try:
+        ok, message = elevation.set_elevated_autostart(True)
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc)
+    settings.set("elevated_bootstrap", False)
+    if not ok:
+        # 这里不在 main() 里，不能复用它的局部 logger，按需取配置好的 logger
+        setup_logging().warning("最高权限自启登记失败（静默）：%s", message)
+    admin = elevation.is_admin()
+    if admin and ok:
+        text = QCoreApplication.translate(
+            "ShenQing", "已默认以最高权限运行，并开启最高权限开机自启"
+        )
+    elif admin:
+        text = QCoreApplication.translate(
+            "ShenQing", "已默认以最高权限运行（最高权限自启登记失败，可在设置里重试）"
+        )
+    elif ok:
+        text = QCoreApplication.translate(
+            "ShenQing", "已默认开启管理员模式，并登记最高权限开机自启"
+        )
+    else:
+        text = QCoreApplication.translate(
+            "ShenQing", "已默认开启管理员模式（下次启动会请求提权）"
+        )
+    bridge.toast.emit(text)
+
+
 _SMOKE_PAGES = (
     "pages/SpacesPage.qml",
     "pages/WhitelistPage.qml",
     "pages/PluginsPage.qml",
+    "pages/ThemesPage.qml",
     "pages/StatsPage.qml",
     "pages/SettingsPage.qml",
 )

@@ -43,6 +43,13 @@ class SettingsTest(unittest.TestCase):
             settings = Settings(path)
             self.assertEqual(settings.get("lock_level"), LockLevel.MEDIUM.value)
 
+    def test_is_new_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+            self.assertTrue(Settings(path).is_new)
+            Settings(path).set("theme", "Light")
+            self.assertFalse(Settings(path).is_new)
+
 
 class BlocklistTest(unittest.TestCase):
     def test_add_remove_group(self) -> None:

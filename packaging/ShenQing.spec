@@ -62,6 +62,7 @@ _EXE_ARGS = dict(
     upx=False,
     console=False,
     icon=_ICON,
+    version=str(ROOT / "packaging" / "version_info.txt"),
 )
 
 if os.environ.get("SHENQING_ONEFILE") == "1":

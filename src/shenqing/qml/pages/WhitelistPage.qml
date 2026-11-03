@@ -1,12 +1,15 @@
 import QtQuick
+import "../theme"
 import "../components"
 import "../glass"
 import "../components/Constants.js" as C
 
 // 白名单应用：搜索 + 分类 chips + 应用列表开关
+// v0.5：按档位（mode）打开，每个空间各自维护一份白名单。
 Item {
     id: page
     property string spaceId: ""
+    property string mode: ""
     property Item glassSource: null
     property string searchText: ""
     property string activeCategory: "全部应用"
@@ -23,12 +26,36 @@ Item {
     ]
     readonly property var catalog: App.appCatalog || []
 
+    // v0.6：优先按具体空间 id 定位；旧调用方只传 mode 时退回该档第一张
     readonly property var spaceData: {
         var list = App.spaces || []
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].id) === String(page.spaceId)) return list[i]
+        if (page.spaceId !== "") {
+            for (var i = 0; i < list.length; i++) {
+                if (String(list[i].id) === String(page.spaceId)) return list[i]
+            }
+        }
+        if (page.mode !== "") {
+            for (var m = 0; m < list.length; m++) {
+                if (String(list[m].mode) === String(page.mode)) return list[m]
+            }
         }
         return null
+    }
+
+    readonly property string spaceName: (spaceData !== null && spaceData.name !== undefined)
+                                        ? String(spaceData.name) : ""
+
+    function toggleApp(exe, enabled) {
+        var value = String(exe)
+        if (page.spaceId !== "" && typeof App.toggleSpaceAllowedApp === "function") {
+            App.toggleSpaceAllowedApp(page.spaceId, value, !!enabled)
+            return
+        }
+        if (page.mode !== "" && typeof App.toggleSpaceAllowedAppFor === "function") {
+            App.toggleSpaceAllowedAppFor(page.mode, value, !!enabled)
+            return
+        }
+        App.toggleSpaceAllowedApp(page.spaceId, value, !!enabled)
     }
     readonly property var allowedList: spaceData !== null && spaceData.allowed_apps !== undefined
                                        ? spaceData.allowed_apps : []
@@ -116,14 +143,37 @@ Item {
         }
 
         Text {
+            id: titleText
             anchors.left: backButton.right
             anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
-            text: qsTr("白名单应用")
-            color: C.textPrimary
+            text: qsTr("允许使用的应用")
+            color: AppTheme.textPrimary
             font.pixelSize: 22
             font.weight: Font.Bold
             font.family: C.numFont
+        }
+
+        Rectangle {
+            visible: page.spaceName !== ""
+            anchors.left: titleText.right
+            anchors.leftMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            width: spaceChipText.implicitWidth + 18
+            height: 22
+            radius: 11
+            color: AppTheme.glass ? "#1FFFFFFF" : AppTheme.chipBg
+            border.width: 1
+            border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+
+            Text {
+                id: spaceChipText
+                anchors.centerIn: parent
+                text: page.spaceName
+                color: AppTheme.textSecondary
+                font.pixelSize: 11
+                font.family: C.numFont
+            }
         }
 
     }
@@ -162,10 +212,10 @@ Item {
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             text: page.searchText
-            color: C.textPrimary
+            color: AppTheme.textPrimary
             font.pixelSize: 15
             font.family: C.numFont
-            selectionColor: C.accent
+            selectionColor: AppTheme.accent
             selectedTextColor: "#FFFFFF"
             selectByMouse: true
             onTextChanged: page.searchText = text
@@ -174,7 +224,7 @@ Item {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("搜索应用")
-                color: C.textTertiary
+                color: AppTheme.textTertiary
                 font.pixelSize: 15
                 font.family: C.numFont
                 visible: searchInput.text.length === 0
@@ -252,7 +302,7 @@ Item {
                         highlight: chosen ? 0.95 : 0.55
                         whiten: 0.04
                         tintAlpha: chosen ? 0.34 : 0.17
-                        tint: chosen ? C.accentSoft : C.glassTint
+                        tint: chosen ? AppTheme.accentSoft : AppTheme.glassTint
                         sheen: 0.4
                         hover: chipArea.pressed ? 0.3 : 0
                     }
@@ -261,7 +311,7 @@ Item {
                         anchors.fill: parent
                         visible: page.glassSource === null
                         radius: 19
-                        color: chosen ? C.accent : "#12FFFFFF"
+                        color: chosen ? AppTheme.accent : "#12FFFFFF"
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
 
@@ -358,7 +408,7 @@ Item {
 
                     Text {
                         text: modelData.name !== undefined ? String(modelData.name) : ""
-                        color: C.textPrimary
+                        color: AppTheme.textPrimary
                         font.pixelSize: 15
                         font.family: C.numFont
                         elide: Text.ElideRight
@@ -366,7 +416,7 @@ Item {
                     }
                     Text {
                         text: modelData.exe !== undefined ? String(modelData.exe) : ""
-                        color: C.textTertiary
+                        color: AppTheme.textTertiary
                         font.pixelSize: 11
                         font.family: C.numFont
                         elide: Text.ElideRight
@@ -380,8 +430,7 @@ Item {
                     anchors.rightMargin: 14
                     anchors.verticalCenter: parent.verticalCenter
                     checked: page.isAllowed(modelData.exe)
-                    onClicked: App.toggleSpaceAllowedApp(page.spaceId, String(modelData.exe),
-                                                         !page.isAllowed(modelData.exe))
+                    onClicked: page.toggleApp(String(modelData.exe), !page.isAllowed(modelData.exe))
                 }
 
                 MouseArea {
@@ -390,8 +439,7 @@ Item {
                     anchors.rightMargin: 78
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: App.toggleSpaceAllowedApp(page.spaceId, String(modelData.exe),
-                                                         !page.isAllowed(modelData.exe))
+                    onClicked: page.toggleApp(String(modelData.exe), !page.isAllowed(modelData.exe))
                 }
 
                 Rectangle {
@@ -433,7 +481,7 @@ Item {
                 text: page.catalog.length === 0
                       ? qsTr("还没有扫描到本机应用。点「刷新应用清单」扫描一次（约 1–6 秒）。")
                       : qsTr("换个关键词，或切到「全部应用」分类看看。")
-                color: C.textTertiary
+                color: AppTheme.textTertiary
                 font.pixelSize: 12
                 font.family: C.numFont
             }
@@ -469,8 +517,10 @@ Item {
         Text {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: qsTr("已选择 %1 个应用 · 命中白名单的进程不会被结束").arg(page.allowedList.length)
-            color: C.textTertiary
+            text: page.mode !== ""
+              ? qsTr("%1 · 已选择 %2 个应用 · 命中白名单的进程不会被结束").arg(page.spaceName).arg(page.allowedList.length)
+              : qsTr("已选择 %1 个应用 · 命中白名单的进程不会被结束").arg(page.allowedList.length)
+            color: AppTheme.textTertiary
             font.pixelSize: 12
             font.family: C.numFont
         }

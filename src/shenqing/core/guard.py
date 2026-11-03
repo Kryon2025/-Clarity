@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import ctypes
+import os
 import sys
 from ctypes import wintypes
 
 from PySide6.QtCore import QObject, QTimer, Signal
+
+from ..services.app_shield import AppShield
 
 TH32CS_SNAPPROCESS = 0x00000002
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
@@ -116,6 +119,9 @@ class ProcessGuard(QObject):
         self._whitelist: set[str] = set(DEFAULT_WHITELIST)
         self._active = False
         self.killed_total = 0
+        self._shield = AppShield()
+        self._keep_alive = True   # True = 不杀进程，改为隐藏窗口 + 静音
+        self._strict = False      # True = 白名单之外的可见应用也屏蔽（重度）
 
     @property
     def active(self) -> bool:
@@ -130,6 +136,24 @@ class ProcessGuard(QObject):
     def set_whitelist(self, names: list[str]) -> None:
         self._whitelist = set(DEFAULT_WHITELIST) | {n.strip().lower() for n in names if n.strip()}
 
+    def configure(
+        self,
+        *,
+        blacklist: list[str] | None = None,
+        whitelist: list[str] | None = None,
+        strict: bool | None = None,
+        keep_alive: bool | None = None,
+    ) -> None:
+        """一次性配置一次会话的屏蔽策略。"""
+        if blacklist is not None:
+            self.set_blacklist(blacklist)
+        if whitelist is not None:
+            self.set_whitelist(whitelist)
+        if strict is not None:
+            self._strict = bool(strict)
+        if keep_alive is not None:
+            self._keep_alive = bool(keep_alive)
+
     def start(self) -> None:
         self._active = True
         self._timer.start()
@@ -137,14 +161,41 @@ class ProcessGuard(QObject):
     def stop(self) -> None:
         self._active = False
         self._timer.stop()
+        # 会话结束：把藏起来的窗口放回来、把静音恢复
+        try:
+            self._shield.restore()
+        except Exception:  # noqa: BLE001
+            pass
 
     def poll(self) -> None:
-        if not self._active or not self._blacklist:
+        """每个 tick：处理黑名单进程；重度模式还会屏蔽白名单外的可见应用。
+
+        keep_alive=True（默认）时 **不杀进程**：隐藏窗口 + 静音，保留未保存的工作；
+        keep_alive=False 时保持旧行为（强制结束进程）。
+        """
+        if not self._active:
             return
-        for pid, exe_name in iter_processes():
-            exe = exe_name.lower()
-            if exe in self._whitelist or exe not in self._blacklist:
-                continue
-            if kill_process(pid):
-                self.killed_total += 1
-                self.processKilled.emit(exe_name)
+        process_cache = iter_processes()
+        if self._blacklist:
+            for pid, exe_name in process_cache:
+                exe = exe_name.lower()
+                if exe in self._whitelist or exe not in self._blacklist:
+                    continue
+                if self._keep_alive:
+                    hidden, muted = self._shield.shield(pid)
+                    if hidden or muted:
+                        self.processKilled.emit(exe_name)
+                elif kill_process(pid):
+                    self.killed_total += 1
+                    self.processKilled.emit(exe_name)
+
+        if self._strict:
+            own_pid = os.getpid()
+            names = {pid: name.lower() for pid, name in process_cache}
+            for pid in {pid for pid, _name in process_cache}:
+                if pid == own_pid:
+                    continue
+                exe = names.get(pid, "")
+                if not exe or exe in self._whitelist:
+                    continue
+                self._shield.shield(pid)

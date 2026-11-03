@@ -1,8 +1,11 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
-// 浮层面板外壳：「取消 / 标题 / 完成」顶栏 + 内容区 + 可选删除行
+// 浮层面板外壳：「取消 / 标题 / 完成」顶栏 + 内容区 + 可选删除行。
+// glass 主题：近不透明深色玻璃（浮层要压住背后内容，不做背景折射）；
+// solid / light 主题：实底卡片 + 细描边，去掉光泽/顶部亮线。
 Item {
     id: sheet
     default property alias content: contentHost.data
@@ -31,15 +34,17 @@ Item {
         id: panelBase
         anchors.fill: parent
         radius: C.radiusPanel
-        color: "#E8070B13"
+        color: AppTheme.glass ? "#E8070B13" : AppTheme.cardBg
         border.width: 1
-        border.color: "#3AFFFFFF"
+        border.color: AppTheme.glass ? "#3AFFFFFF" : AppTheme.cardBorder
+        Behavior on color { ColorAnimation { duration: 160 } }
     }
 
-    // 玻璃光泽
+    // 玻璃光泽（仅玻璃主题）
     Rectangle {
         id: panel
         anchors.fill: parent
+        visible: AppTheme.glass
         radius: C.radiusPanel
         gradient: Gradient {
             GradientStop { position: 0.0; color: "#14FFFFFF" }
@@ -49,6 +54,7 @@ Item {
     }
 
     Rectangle {
+        visible: AppTheme.glass
         x: C.radiusPanel * 1.1
         y: 1.2
         width: Math.max(0, parent.width * 0.5)
@@ -86,7 +92,7 @@ Item {
         Text {
             anchors.centerIn: parent
             text: sheet.title
-            color: C.textPrimary
+            color: AppTheme.textPrimary
             font.pixelSize: 20
             font.weight: Font.Bold
             font.family: C.numFont
@@ -127,14 +133,25 @@ Item {
         anchors.rightMargin: 22
         height: 56
 
-        // 删除行在近不透明的浮层上，不做背景折射（否则会透出浮层背后的亮色），
-        // 只用红色玻璃质感：半透明红 + 顶部微光 + 描边。
+        // 删除行：红色警示底。玻璃主题用半透明红玻璃质感；纯色/浅色用实底红。
         Rectangle {
             anchors.fill: parent
             radius: 18
-            color: sheet.deleteArmed
-                   ? (deletePointer.containsMouse ? "#38FF6B7A" : "#2EFF6B7A")
-                   : (deletePointer.containsMouse ? "#26FF6B7A" : "#18FF6B7A")
+            color: {
+                if (AppTheme.glass) {
+                    return sheet.deleteArmed
+                           ? (deletePointer.containsMouse ? "#38FF6B7A" : "#2EFF6B7A")
+                           : (deletePointer.containsMouse ? "#26FF6B7A" : "#18FF6B7A")
+                }
+                if (AppTheme.light) {
+                    return sheet.deleteArmed
+                           ? (deletePointer.containsMouse ? "#FFD9DE" : "#FFE3E7")
+                           : (deletePointer.containsMouse ? "#FDECEE" : "#FFF3F4")
+                }
+                return sheet.deleteArmed
+                       ? (deletePointer.containsMouse ? "#471B23" : "#3D161E")
+                       : (deletePointer.containsMouse ? "#33141B" : "#291016")
+            }
             Behavior on color {
                 ColorAnimation { duration: 160 }
             }
@@ -142,6 +159,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
+            visible: AppTheme.glass
             radius: 18
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#14FFFFFF" }
@@ -155,14 +173,18 @@ Item {
             radius: 18
             color: "transparent"
             border.width: 1
-            border.color: sheet.deleteArmed ? "#8CFF6B7A" : (deletePointer.containsMouse ? "#59FF6B7A" : "#33FF6B7A")
+            border.color: AppTheme.light
+                          ? (sheet.deleteArmed ? "#B3E2555F" : "#66E2555F")
+                          : (sheet.deleteArmed ? "#8CFF6B7A"
+                                               : (deletePointer.containsMouse ? "#59FF6B7A" : "#33FF6B7A"))
             Behavior on border.color { ColorAnimation { duration: 160 } }
         }
 
         Text {
             anchors.centerIn: parent
             text: sheet.deleteArmed ? qsTr("再次点击，确认删除") : sheet.deleteText
-            color: sheet.deleteArmed ? "#FF98A6" : "#FF8092"
+            color: AppTheme.light ? AppTheme.danger
+                                  : (sheet.deleteArmed ? "#FF98A6" : "#FF8092")
             font.pixelSize: 15
             font.weight: Font.DemiBold
             font.family: C.numFont

@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "../components"
 import "../components/Constants.js" as C
 
@@ -34,7 +35,7 @@ Item {
                     spacing: 6
                     Text {
                         text: qsTr("插件")
-                        color: C.textPrimary
+                        color: AppTheme.textPrimary
                         font.pixelSize: 30
                         font.weight: Font.Bold
                         font.family: C.numFont
@@ -42,7 +43,7 @@ Item {
                     }
                     Text {
                         text: qsTr("插件给深清加功能")
-                        color: C.textSecondary
+                        color: AppTheme.textSecondary
                         font.pixelSize: 13
                         font.family: C.numFont
                     }
@@ -73,7 +74,7 @@ Item {
                             anchors.leftMargin: 16
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("已安装插件")
-                            color: C.textPrimary
+                            color: AppTheme.textPrimary
                             font.pixelSize: 15
                             font.weight: Font.DemiBold
                             font.family: C.numFont
@@ -84,7 +85,7 @@ Item {
                             anchors.leftMargin: 96
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("（%1）").arg((App.plugins || []).length)
-                            color: C.textTertiary
+                            color: AppTheme.textTertiary
                             font.pixelSize: 12
                             font.family: C.numFont
                         }
@@ -111,7 +112,7 @@ Item {
                         topPadding: 6
                         bottomPadding: 10
                         text: qsTr("还没有插件。把插件放到 %APPDATA%/ShenQing/plugins 后点「重新扫描」。")
-                        color: C.textTertiary
+                        color: AppTheme.textTertiary
                         font.pixelSize: 12
                         font.family: C.numFont
                         wrapMode: Text.WordWrap
@@ -149,7 +150,7 @@ Item {
                                     spacing: 8
                                     Text {
                                         text: String(modelData.name !== undefined ? modelData.name : qsTr("插件"))
-                                        color: C.textPrimary
+                                        color: AppTheme.textPrimary
                                         font.pixelSize: 14
                                         font.weight: Font.DemiBold
                                         font.family: C.numFont
@@ -157,7 +158,7 @@ Item {
                                     Text {
                                         anchors.baseline: parent.children[0].baseline
                                         text: "v" + String(modelData.version !== undefined ? modelData.version : "1.0")
-                                        color: C.textTertiary
+                                        color: AppTheme.textTertiary
                                         font.pixelSize: 11
                                         font.family: C.numFont
                                     }
@@ -171,7 +172,7 @@ Item {
                                         return String(modelData.description !== undefined ? modelData.description : "")
                                     }
                                     color: (modelData.error !== undefined && String(modelData.error).length > 0)
-                                           ? "#FF8898" : C.textTertiary
+                                           ? "#FF8898" : AppTheme.textTertiary
                                     font.pixelSize: 12
                                     font.family: C.numFont
                                     elide: Text.ElideRight
@@ -181,7 +182,7 @@ Item {
                                     width: parent.width
                                     visible: pluginRow.pluginState.length > 0
                                     text: pluginRow.pluginState
-                                    color: C.accent
+                                    color: AppTheme.accent
                                     font.pixelSize: 12
                                     font.family: C.numFont
                                     elide: Text.ElideRight

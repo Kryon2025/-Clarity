@@ -10,10 +10,13 @@ from .consts import LockLevel
 from .paths import app_data_dir
 
 DEFAULTS: dict[str, Any] = {
-    "theme": "Auto",            # Auto / Light / Dark
+    "theme": "Auto",            # 窗口 chrome：Auto / Light / Dark
+    "theme_mode": "solid",      # 应用主题：solid / light / glass
+    "default_mode": "medium",   # 默认强度：light / medium / heavy
     "language": "auto",  # auto / zh_CN / en_US
     "autostart": False,
     "hardening": True,      # 防退出加固：隐藏任务栏 + 屏蔽系统快捷键
+    "keep_alive": True,     # 不杀进程：只隐藏窗口 + 静音（保留未保存工作）
     "admin_mode": False,    # 以管理员身份运行（启动时 UAC 提权）
     "default_minutes": 25,
     "lock_level": LockLevel.MEDIUM.value,
@@ -31,6 +34,8 @@ class Settings:
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or (app_data_dir() / "settings.json")
+        #: 首次运行（配置文件尚不存在）——app.py 用它决定默认最高权限
+        self.is_new = not self.path.exists()
         self._data: dict[str, Any] = dict(DEFAULTS)
         self.load()
 

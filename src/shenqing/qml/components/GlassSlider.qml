@@ -1,8 +1,10 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
-// 液态玻璃滑块：玻璃轨道 + 玻璃旋钮（直径 22），拖动时 hover 提亮并把高光带跟随指针。
+// 滑块。glass 主题：玻璃轨道 + 玻璃旋钮（直径 22），拖动时 hover 提亮；
+// solid / light 主题：平面轨道 + 实心圆钮，不渲染折射/噪点。
 Item {
     id: root
     property real from: 15
@@ -24,6 +26,7 @@ Item {
         return null
     }
 
+    readonly property bool useGlass: AppTheme.glass && root.glassSource !== null
     property bool hovered: false
     property bool held: false
 
@@ -54,9 +57,19 @@ Item {
         width: parent.width - 2
         height: 8
 
+        // 平面轨道
+        Rectangle {
+            anchors.fill: parent
+            visible: !root.useGlass
+            radius: height / 2
+            color: AppTheme.chipBg
+            border.width: 1
+            border.color: AppTheme.cardBorder
+        }
+
         LiquidGlass {
             anchors.fill: parent
-            visible: root.glassSource !== null
+            visible: root.useGlass
             sourceItem: root.glassSource
             radius: height / 2
             depth: 0.45
@@ -65,33 +78,24 @@ Item {
             highlight: 0.55
             whiten: 0.02
             tintAlpha: 0.2
-            tint: C.glassTint
+            tint: AppTheme.glassTint
             sheen: 0.35
             hover: dragArea.pressed ? 0.6 : 0
         }
 
-        Rectangle {
-            anchors.fill: parent
-            visible: root.glassSource === null
-            radius: height / 2
-            color: "#26FFFFFF"
-            border.width: 1
-            border.color: "#1FFFFFFF"
-        }
-
-        // 已选进度：玻璃染色层
+        // 已选进度
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             x: 0
             width: Math.max(4, root.ratio * track.width)
             height: parent.height
             radius: height / 2
-            color: "#8FB2FF"
-            opacity: root.glassSource === null ? 1.0 : 0.55
+            color: AppTheme.accentSoft
+            opacity: root.useGlass ? 0.55 : 1.0
         }
     }
 
-    // ---------- 玻璃旋钮 ----------
+    // ---------- 旋钮 ----------
     Item {
         id: knob
         width: 22
@@ -101,7 +105,7 @@ Item {
 
         LiquidGlass {
             anchors.fill: parent
-            visible: root.glassSource !== null
+            visible: root.useGlass
             sourceItem: root.glassSource
             radius: knob.width / 2
             depth: 0.7
@@ -115,13 +119,14 @@ Item {
             hover: dragArea.pressed ? 0.6 : 0
         }
 
+        // 平面主题的圆钮
         Rectangle {
             anchors.fill: parent
-            visible: root.glassSource === null
+            visible: !root.useGlass
             radius: width / 2
-            color: "#FFFFFF"
+            color: AppTheme.light ? "#FFFFFF" : "#F2FBFD"
             border.width: 1
-            border.color: "#66FFFFFF"
+            border.color: AppTheme.light ? AppTheme.cardBorderStrong : "#4DFFFFFF"
         }
 
         Rectangle {
@@ -129,7 +134,7 @@ Item {
             radius: width / 2
             color: "transparent"
             border.width: 1
-            border.color: root.glassSource === null ? "#00FFFFFF" : "#99FFFFFF"
+            border.color: root.useGlass ? "#99FFFFFF" : "transparent"
         }
     }
 

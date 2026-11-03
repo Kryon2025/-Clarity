@@ -1,9 +1,11 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
-// 灵动岛：右上角胶囊玻璃条。收起 = 小图标 + 一行标题 + 播放/暂停；
+// 灵动岛：右上角胶囊条。收起 = 小图标 + 一行标题 + 播放/暂停；
 // 悬停展开 = 应用名 + 标题 + 艺术家 + 上一首/播放/下一首 + 细进度条。
+// glass 主题用液态玻璃；solid / light 主题用实底卡片 + 细描边，不做折射。
 // 没有媒体会话时：收起显示专注态文案，展开显示空间名与完成度，不显示播放控制。
 Item {
     id: island
@@ -22,7 +24,9 @@ Item {
     property string focusSub: ""
 
     property bool forceExpanded: false
-    readonly property bool expanded: forceExpanded || hoverArea.containsMouse
+    // 用 HoverHandler 判定悬停：指针落在展开态的按钮/子项上时依然算「在岛上」，
+    // 不会出现「悬停展开 → 按钮盖住热区 → 判定离开 → 收起 → 再展开」的抽搐循环
+    readonly property bool expanded: forceExpanded || islandHover.hovered || hoverLatch
 
     signal togglePlay()
     signal nextTrack()
@@ -33,12 +37,25 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
+    readonly property bool useGlass: AppTheme.glass && island.glassSource !== null
+
     Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
+    // 平面底（solid / light）
+    Rectangle {
+        anchors.fill: parent
+        visible: !island.useGlass
+        radius: island.expanded ? 26 : height / 2
+        color: AppTheme.cardBg
+        border.width: 1
+        border.color: AppTheme.cardBorder
+        Behavior on radius { NumberAnimation { duration: 200 } }
+    }
+
     LiquidGlass {
         anchors.fill: parent
-        visible: island.glassSource !== null
+        visible: island.useGlass
         sourceItem: island.glassSource
         radius: island.expanded ? 26 : island.height / 2
         depth: 1.0
@@ -47,24 +64,14 @@ Item {
         highlight: 1.15
         whiten: 0.05
         tintAlpha: 0.24
-        tint: C.glassTint
+        tint: AppTheme.glassTint
         sheen: 0.5
         Behavior on radius { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     }
 
     Rectangle {
         anchors.fill: parent
-        visible: island.glassSource === null
-        radius: island.expanded ? 26 : height / 2
-        color: "#1A2434"
-        border.width: 1
-        border.color: "#40FFFFFF"
-        Behavior on radius { NumberAnimation { duration: 200 } }
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        visible: island.glassSource !== null
+        visible: island.useGlass
         radius: island.expanded ? 26 : height / 2
         color: "transparent"
         border.width: 1
@@ -72,12 +79,26 @@ Item {
         Behavior on radius { NumberAnimation { duration: 200 } }
     }
 
-    // 悬停热区（放在内容下面，控制按钮仍可点）
-    MouseArea {
-        id: hoverArea
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
+    // 悬停判定用 HoverHandler：指针落在展开态的按钮上时依然算「在岛上」
+    HoverHandler {
+        id: islandHover
+        onHoveredChanged: {
+            if (hovered) {
+                hoverLatch = true
+                collapseTimer.stop()
+            } else {
+                collapseTimer.restart()
+            }
+        }
+    }
+
+    // 指针离开后延迟 260ms 再收起，避免边缘抖动导致反复展开/收起
+    property bool hoverLatch: false
+    Timer {
+        id: collapseTimer
+        interval: 260
+        repeat: false
+        onTriggered: if (!islandHover.hovered) hoverLatch = false
     }
 
     // ---------- 收起态 ----------
@@ -116,7 +137,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 30 - 10 - (island.hasMedia ? 44 : 0)
                 text: island.hasMedia ? island.mediaTitle : island.focusLine
-                color: "#EFF9FF"
+                color: AppTheme.textPrimary
                 font.pixelSize: 13
                 font.family: C.numFont
                 elide: Text.ElideRight
@@ -173,7 +194,7 @@ Item {
                           ? (island.mediaApp !== "" ? island.mediaApp
                                                     : (island.mediaAlbum !== "" ? island.mediaAlbum : qsTr("正在播放")))
                           : (island.focusSub !== "" ? island.focusSub : island.focusLine)
-                    color: "#8FB3C0"
+                    color: AppTheme.textTertiary
                     font.pixelSize: 11
                     font.family: C.numFont
                     elide: Text.ElideRight
@@ -183,7 +204,7 @@ Item {
             Text {
                 width: parent.width
                 text: island.hasMedia ? island.mediaTitle : island.focusLine
-                color: "#F4FCFF"
+                color: AppTheme.textPrimary
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
                 font.family: C.numFont
@@ -197,7 +218,7 @@ Item {
                                                    : (island.mediaAlbum !== "" ? island.mediaAlbum : ""))
                       : ""
                 visible: text !== ""
-                color: "#A9C6D2"
+                color: AppTheme.textSecondary
                 font.pixelSize: 12
                 font.family: C.numFont
                 elide: Text.ElideRight
@@ -212,13 +233,13 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: 2
-                    color: "#26FFFFFF"
+                    color: island.useGlass ? "#26FFFFFF" : AppTheme.divider
                 }
                 Rectangle {
                     width: parent.width * Math.max(0, Math.min(1, island.mediaPosition / Math.max(1, island.mediaDuration)))
                     height: parent.height
                     radius: 2
-                    color: "#7FE7DA"
+                    color: AppTheme.accent
                 }
             }
 

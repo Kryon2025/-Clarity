@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "../components"
 import "../components/Constants.js" as C
 
@@ -173,7 +174,7 @@ GlassSheet {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     text: qsTr("空间名称")
-                    color: C.textSecondary
+                    color: AppTheme.textSecondary
                     font.pixelSize: 13
                     font.family: C.numFont
                 }
@@ -186,11 +187,11 @@ GlassSheet {
                     anchors.top: nameLabel.bottom
                     anchors.topMargin: 4
                     text: sheetRoot.spaceName
-                    color: C.textPrimary
+                    color: AppTheme.textPrimary
                     font.pixelSize: 20
                     font.weight: Font.DemiBold
                     font.family: C.numFont
-                    selectionColor: C.accent
+                    selectionColor: AppTheme.accent
                     selectedTextColor: "#FFFFFF"
                     cursorDelegate: Item {
                         width: 2
@@ -198,7 +199,7 @@ GlassSheet {
                             width: 2
                             height: nameInput.height * 0.8
                             y: nameInput.height * 0.1
-                            color: C.accent
+                            color: AppTheme.accent
                             visible: nameInput.cursorVisible && nameInput.activeFocus
                         }
                     }
@@ -222,7 +223,7 @@ GlassSheet {
                     anchors.top: nameInput.top
                     anchors.topMargin: 2
                     text: qsTr("给空间起个名字")
-                    color: C.textTertiary
+                    color: AppTheme.textTertiary
                     font.pixelSize: 18
                     font.family: C.numFont
                     visible: nameInput.text.length === 0
@@ -233,7 +234,7 @@ GlassSheet {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     text: nameInput.text.length + "/" + sheetRoot.nameLimit
-                    color: C.textTertiary
+                    color: AppTheme.textTertiary
                     font.pixelSize: 12
                     font.family: C.numFont
                 }
@@ -316,7 +317,7 @@ GlassSheet {
                             width: 110
                             horizontalAlignment: Text.AlignHCenter
                             text: qsTr("%1 分钟").arg(sheetRoot.minutes)
-                            color: C.textPrimary
+                            color: AppTheme.textPrimary
                             font.pixelSize: 21
                             font.weight: Font.DemiBold
                             font.family: C.numFont
@@ -370,7 +371,7 @@ GlassSheet {
                     width: parent.width - 28
                     x: 14
                     height: 1
-                    color: C.divider
+                    color: AppTheme.divider
                 }
 
                 GlassRow {
@@ -417,7 +418,7 @@ GlassSheet {
                                     color: chosen ? "#24FFFFFF" : (atmArea.containsMouse ? "#12FFFFFF" : "#0AFFFFFF")
                                     border.width: 1
                                     border.color: chosen
-                                                  ? String(modelData.color !== undefined ? modelData.color : C.accent)
+                                                  ? String(modelData.color !== undefined ? modelData.color : AppTheme.accent)
                                                   : "#22FFFFFF"
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                 }
@@ -430,7 +431,7 @@ GlassSheet {
                                         height: 8
                                         radius: 4
                                         anchors.verticalCenter: parent.verticalCenter
-                                        color: String(modelData.color !== undefined ? modelData.color : C.accent)
+                                        color: String(modelData.color !== undefined ? modelData.color : AppTheme.accent)
                                     }
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
@@ -465,7 +466,7 @@ GlassSheet {
                     width: parent.width - 28
                     x: 14
                     height: 1
-                    color: C.divider
+                    color: AppTheme.divider
                 }
 
                 GlassRow {

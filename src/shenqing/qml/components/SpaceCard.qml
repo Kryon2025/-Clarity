@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import QtQuick.Effects
 import "../glass"
 import "Constants.js" as C
@@ -9,7 +10,7 @@ Item {
     property string spaceName: ""
     property int minutes: 180
     property bool superCard: false
-    property color accentColor: C.accent
+    property color accentColor: AppTheme.accent
     property Item glassSource: null
 
     signal editRequested()
@@ -53,7 +54,7 @@ Item {
             highlight: 0.7
             whiten: 0.015
             tintAlpha: 0.16
-            tint: C.glassTint
+            tint: AppTheme.glassTint
             sheen: 0.3
         }
 
@@ -75,9 +76,9 @@ Item {
 
             Gradient {
                 id: superGradient
-                GradientStop { position: 0.0; color: Qt.lighter(C.accentDeep, 1.1) }
-                GradientStop { position: 0.55; color: C.accentDeep }
-                GradientStop { position: 1.0; color: Qt.darker(C.accentDeep, 1.18) }
+                GradientStop { position: 0.0; color: Qt.lighter(AppTheme.accentDeep, 1.1) }
+                GradientStop { position: 0.55; color: AppTheme.accentDeep }
+                GradientStop { position: 1.0; color: Qt.darker(AppTheme.accentDeep, 1.18) }
             }
 
             Gradient {
@@ -192,7 +193,7 @@ Item {
 
             Text {
                 text: root.spaceName
-                color: root.superCard ? "#FFFFFF" : C.textPrimary
+                color: root.superCard ? "#FFFFFF" : AppTheme.textPrimary
                 font.pixelSize: root.superCard ? 27 : 20
                 font.weight: Font.Bold
                 font.family: C.numFont
@@ -204,7 +205,7 @@ Item {
                 spacing: 6
                 Text {
                     text: qsTr("%1 分钟").arg(root.minutes)
-                    color: root.superCard ? "#DCE7FF" : C.textSecondary
+                    color: root.superCard ? "#DCE7FF" : AppTheme.textSecondary
                     font.pixelSize: root.superCard ? 15 : 14
                     font.family: C.numFont
                 }
@@ -212,7 +213,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "chevron"
                     size: 13
-                    color: root.superCard ? "#DCE7FF" : C.textSecondary
+                    color: root.superCard ? "#DCE7FF" : AppTheme.textSecondary
                 }
             }
         }

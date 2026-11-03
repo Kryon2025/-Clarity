@@ -8,10 +8,16 @@
 
 同一 id 只保留优先级最高的那一份；每个插件都独立 try/except，坏插件只影响自己。
 所有公开方法都由 threading.RLock 保护，可在宿主主线程直接调用。
+
+插件通过 PluginAPI 注册的导航入口 / 遮罩组件挂在 PluginRecord 上，
+由 list_nav_items() / list_widgets() 汇总给 UI；卸载 / 停用 / 重载时清空，
+reload 后由插件 on_load 重新注册。manifest 的 default_enabled=false 表示
+「首次安装默认停用」，首次扫描会写进宿主 settings 的 disabled_plugins。
 """
 
 from __future__ import annotations
 
+import copy
 import importlib.util
 import logging
 import os
@@ -43,6 +49,10 @@ PLUGINS_DIR_ENV = "SHENQING_PLUGINS_DIR"
 #: 宿主 settings.json 里记录「被停用插件 id」的键。
 DISABLED_PLUGINS_KEY = "disabled_plugins"
 
+#: 宿主 settings.json 里记录「默认停用规则已生效」的插件 id 键。
+#: 有它才能保证用户手动启用 default_enabled=false 的插件后，下次启动不再被自动关掉。
+DEFAULTS_APPLIED_KEY = "plugin_defaults_applied"
+
 #: 宿主事件名 -> 插件钩子方法名。bridge 只认这几个事件。
 EVENT_HOOKS: dict[str, str] = {
     "session_start": "on_session_start",
@@ -66,6 +76,35 @@ def _safe_resolve(path: Path) -> Path:
         return path.resolve()
     except OSError:  # pragma: no cover - 极端文件系统错误
         return path
+
+
+def resolve_relative_path(
+    base: Path,
+    relative: str,
+    suffix: str | None = None,
+) -> Path:
+    """把相对路径解析到 base 目录内，并校验越界 / 后缀 / 文件存在。
+
+    通过返回绝对 Path，失败抛 ValueError（message 可直接展示给用户）。
+    供插件注册 QML、manifest 的 icon 以及 validate 命令共用。
+    """
+    if not isinstance(relative, str) or not relative.strip():
+        raise ValueError("路径不能为空")
+    text = relative.replace("\\", "/").strip()
+    if text.startswith("/") or re.match(r"^[A-Za-z]:", text):
+        raise ValueError("必须是插件目录内的相对路径")
+    parts = [part for part in text.split("/") if part not in ("", ".")]
+    if not parts or ".." in parts:
+        raise ValueError("不能包含 ..")
+    base = _safe_resolve(base)
+    candidate = _safe_resolve(base.joinpath(*parts))
+    if candidate != base and base not in candidate.parents:
+        raise ValueError("路径指向插件目录之外")
+    if suffix is not None and candidate.suffix.lower() != suffix:
+        raise ValueError(f"必须是 {suffix} 文件")
+    if not candidate.is_file():
+        raise ValueError("文件不存在")
+    return candidate
 
 
 def default_plugins_dirs() -> list[Path]:
@@ -103,6 +142,9 @@ class PluginRecord:
     module_name: str | None = None
     loaded: bool = False
     ui_state: dict = field(default_factory=dict)
+    nav_items: list[dict] = field(default_factory=list)
+    widgets: list[dict] = field(default_factory=list)
+    icon_path: str = ""
 
     @property
     def plugin_id(self) -> str:
@@ -122,7 +164,9 @@ class PluginManager:
         manager = PluginManager(settings)
         manager.dispatch("session_start", space_dict)
         manager.dispatch("session_end", summary_dict)
-        manager.list_plugins()          # -> [{id, name, ...}]
+        manager.list_plugins()          # -> [{id, name, navItems, widgets, ...}]
+        manager.list_nav_items()        # -> 扁平导航入口列表
+        manager.list_widgets()          # -> 扁平遮罩组件列表
         manager.set_enabled(plugin_id, False)
         manager.reload()
     """
@@ -153,10 +197,16 @@ class PluginManager:
         self._records: dict[str, PluginRecord] = {}
         self._signal_listeners: list[SignalEmitter] = []
         self._module_seq = 0
+        # 每个 manager 一个唯一前缀，避免同进程内多实例 / 测试互相覆盖模块
+        self._module_token = f"{os.getpid():x}_{id(self):x}"
 
         with self._lock:
             self._records = self._scan()
             disabled = self._read_disabled()
+            previous = set(disabled)
+            disabled = self._apply_default_enabled(self._records, disabled)
+            if disabled != previous:
+                self._write_id_set(DISABLED_PLUGINS_KEY, disabled)
             for record in self._records.values():
                 manifest = record.manifest
                 if manifest is None:
@@ -182,9 +232,47 @@ class PluginManager:
                         "enabled": bool(record.enabled),
                         "error": record.error,
                         "path": str(record.path),
-                        "state": dict(record.ui_state),
+                        "iconPath": record.icon_path,
+                        "state": copy.deepcopy(record.ui_state),
+                        "navItems": copy.deepcopy(record.nav_items),
+                        "widgets": copy.deepcopy(record.widgets),
                     }
                 )
+            return result
+
+    def list_nav_items(self) -> list[dict]:
+        """已加载插件注册的导航入口，扁平列表：
+
+        [{pluginId, itemId, title, icon, qmlPath}]
+        qmlPath 是插件目录内 .qml 的绝对路径；空字符串表示入口没有页面
+        （只跳插件卡片）。空字符串比 None 对 QML 的 String() 绑定更安全。
+        """
+        with self._lock:
+            result: list[dict] = []
+            for record in self._records.values():
+                if not (record.loaded and record.enabled):
+                    continue
+                for item in record.nav_items:
+                    entry: dict[str, Any] = {"pluginId": record.plugin_id}
+                    entry.update(copy.deepcopy(item))
+                    result.append(entry)
+            return result
+
+    def list_widgets(self) -> list[dict]:
+        """已加载插件注册的遮罩组件，扁平列表：
+
+        [{pluginId, itemId, title, icon, qmlPath, anchor, width, height}]
+        qmlPath 是插件目录内 .qml 的绝对路径。
+        """
+        with self._lock:
+            result: list[dict] = []
+            for record in self._records.values():
+                if not (record.loaded and record.enabled):
+                    continue
+                for widget in record.widgets:
+                    entry: dict[str, Any] = {"pluginId": record.plugin_id}
+                    entry.update(copy.deepcopy(widget))
+                    result.append(entry)
             return result
 
     def get_plugin(self, plugin_id: str) -> PluginBase | None:
@@ -232,6 +320,10 @@ class PluginManager:
                     self._unload(record)
             self._records = self._scan()
             disabled = self._read_disabled()
+            previous = set(disabled)
+            disabled = self._apply_default_enabled(self._records, disabled)
+            if disabled != previous:
+                self._write_id_set(DISABLED_PLUGINS_KEY, disabled)
             for record in self._records.values():
                 manifest = record.manifest
                 if manifest is None:
@@ -335,13 +427,51 @@ class PluginManager:
                         "忽略被高优先级目录覆盖的插件：%s（%s）", manifest.id, child
                     )
                     continue
+                icon_path = ""
+                if manifest.icon:
+                    try:
+                        icon_path = str(
+                            resolve_relative_path(_safe_resolve(child), manifest.icon)
+                        )
+                    except ValueError as exc:
+                        self._logger.warning(
+                            "插件 %s 的 icon 无效或不存在，已忽略：%s", manifest.id, exc
+                        )
                 records[manifest.id] = PluginRecord(
                     key=manifest.id,
                     manifest=manifest,
                     path=_safe_resolve(child),
                     source=source,
+                    icon_path=icon_path,
                 )
         return records
+
+    def _apply_default_enabled(
+        self, records: dict[str, PluginRecord], disabled: set[str]
+    ) -> set[str]:
+        """首次扫描时把 default_enabled=false 的插件自动停用并落盘。
+
+        用 DEFAULTS_APPLIED_KEY 记录「规则已生效」，用户手动启用后不会被再次关掉。
+        """
+        applied = self._read_id_set(DEFAULTS_APPLIED_KEY)
+        changed = False
+        for record in records.values():
+            manifest = record.manifest
+            if manifest is None or manifest.default_enabled:
+                continue
+            if manifest.id in applied:
+                continue
+            applied.add(manifest.id)
+            changed = True
+            if manifest.id not in disabled:
+                disabled.add(manifest.id)
+                self._logger.info(
+                    "插件 %s 默认停用（default_enabled=false），可在插件页手动启用",
+                    manifest.id,
+                )
+        if changed:
+            self._write_id_set(DEFAULTS_APPLIED_KEY, applied)
+        return disabled
 
     # ================= 内部：加载 / 卸载 =================
     def _load(self, record: PluginRecord) -> None:
@@ -381,6 +511,8 @@ class PluginManager:
                 notifier=self._deliver_notification,
                 signal_emitter=self._emit_plugin_signal,
                 state_setter=self._on_plugin_state,
+                nav_registrar=self._register_nav_item,
+                widget_registrar=self._register_widget,
                 host_version=APP_VERSION,
             )
             on_load(record.api)
@@ -399,8 +531,13 @@ class PluginManager:
         self._cleanup(record)
 
     def _cleanup(self, record: PluginRecord) -> None:
+        api = record.api
+        if api is not None:
+            api._deactivate()
         record.loaded = False
         record.ui_state = {}
+        record.nav_items.clear()
+        record.widgets.clear()
         record.instance = None
         record.api = None
         self._purge_modules(record)
@@ -426,7 +563,9 @@ class PluginManager:
         plugin_id = manifest.id if manifest is not None else record.plugin_id
         self._module_seq += 1
         safe_id = re.sub(r"[^0-9A-Za-z_]", "_", plugin_id)
-        module_name = f"_shenqing_plugin_{safe_id}_{self._module_seq}"
+        module_name = (
+            f"_shenqing_plugin_{self._module_token}_{safe_id}_{self._module_seq}"
+        )
         spec = importlib.util.spec_from_file_location(module_name, entry)
         if spec is None or spec.loader is None:
             raise PluginLoadError(f"无法为 {entry} 创建 import spec")
@@ -465,6 +604,105 @@ class PluginManager:
         for name in names:
             sys.modules.pop(name, None)
 
+    # ================= 内部：UI 贡献注册 =================
+    def _register_nav_item(
+        self,
+        plugin_id: str,
+        item_id: str,
+        title: str,
+        icon_name: str,
+        qml_relative_path: str | None,
+    ) -> bool:
+        with self._lock:
+            record = self._find(plugin_id)
+            if record is None or record.api is None or record.instance is None:
+                self._logger.warning("插件 %s 未加载，忽略导航入口 %s", plugin_id, item_id)
+                return False
+            if any(item.get("itemId") == item_id for item in record.nav_items):
+                self._logger.warning(
+                    "插件 %s 的导航入口 id 重复：%s", plugin_id, item_id
+                )
+                return False
+            qml_path = ""
+            if qml_relative_path is not None:
+                resolved = self._resolve_registered_asset(
+                    record, qml_relative_path, ".qml", f"导航入口 {item_id}"
+                )
+                if resolved is None:
+                    return False
+                qml_path = str(resolved)
+            record.nav_items.append(
+                {
+                    "itemId": item_id,
+                    "title": title,
+                    "icon": icon_name,
+                    "qmlPath": qml_path,
+                }
+            )
+            self._logger.info(
+                "插件 %s 注册导航入口 %s（%s）", plugin_id, item_id, qml_path or "无 QML"
+            )
+            return True
+
+    def _register_widget(
+        self,
+        plugin_id: str,
+        widget_id: str,
+        title: str,
+        qml_relative_path: str,
+        anchor: str,
+        width: int,
+        height: int,
+    ) -> bool:
+        with self._lock:
+            record = self._find(plugin_id)
+            if record is None or record.api is None or record.instance is None:
+                self._logger.warning("插件 %s 未加载，忽略遮罩组件 %s", plugin_id, widget_id)
+                return False
+            if any(widget.get("itemId") == widget_id for widget in record.widgets):
+                self._logger.warning(
+                    "插件 %s 的遮罩组件 id 重复：%s", plugin_id, widget_id
+                )
+                return False
+            resolved = self._resolve_registered_asset(
+                record, qml_relative_path, ".qml", f"遮罩组件 {widget_id}"
+            )
+            if resolved is None:
+                return False
+            record.widgets.append(
+                {
+                    "itemId": widget_id,
+                    "title": title,
+                    "icon": "",
+                    "qmlPath": str(resolved),
+                    "anchor": anchor,
+                    "width": width,
+                    "height": height,
+                }
+            )
+            self._logger.info(
+                "插件 %s 注册遮罩组件 %s（%s, %sx%s）",
+                plugin_id,
+                widget_id,
+                anchor,
+                width,
+                height,
+            )
+            return True
+
+    def _resolve_registered_asset(
+        self,
+        record: PluginRecord,
+        relative: str,
+        suffix: str,
+        label: str,
+    ) -> Path | None:
+        try:
+            return resolve_relative_path(record.path, relative, suffix)
+        except ValueError as exc:
+            self._logger.warning("插件 %s 的%s注册失败：%s", record.plugin_id, label, exc)
+            return None
+
     # ================= 内部：钩子调用 =================
     def _invoke(self, record: PluginRecord, hook: str, *args: Any) -> bool:
         instance = record.instance
@@ -482,16 +720,25 @@ class PluginManager:
             )
             return False
 
-    # ================= 内部：设置 / 通知 / 信号 =================
-    def _read_disabled(self) -> set[str]:
+    # ================= 内部：设置 / 通知 / 信号 / 状态 =================
+    def _read_id_set(self, key: str) -> set[str]:
         try:
-            raw = self._settings.get(DISABLED_PLUGINS_KEY, [])
+            raw = self._settings.get(key, [])
         except Exception:
-            self._logger.exception("读取 disabled_plugins 失败")
+            self._logger.exception("读取设置 %s 失败", key)
             return set()
         if not isinstance(raw, (list, tuple, set)):
             return set()
         return {str(item) for item in raw if isinstance(item, str) and item}
+
+    def _write_id_set(self, key: str, values: set[str]) -> None:
+        try:
+            self._settings.set(key, sorted(values))
+        except Exception:
+            self._logger.exception("保存设置 %s 失败", key)
+
+    def _read_disabled(self) -> set[str]:
+        return self._read_id_set(DISABLED_PLUGINS_KEY)
 
     def _save_disabled(self) -> None:
         disabled = self._read_disabled()
@@ -503,10 +750,7 @@ class PluginManager:
                 disabled.discard(manifest.id)
             else:
                 disabled.add(manifest.id)
-        try:
-            self._settings.set(DISABLED_PLUGINS_KEY, sorted(disabled))
-        except Exception:
-            self._logger.exception("保存插件启用状态失败")
+        self._write_id_set(DISABLED_PLUGINS_KEY, disabled)
 
     def _on_plugin_state(self, plugin_id: str, state: dict) -> None:
         """记录插件上报的 UI 状态，并通知宿主刷新（例如刷新插件列表 UI）。"""
@@ -514,11 +758,11 @@ class PluginManager:
             record = self._find(plugin_id)
             if record is None:
                 return
-            record.ui_state = dict(state)
+            record.ui_state = copy.deepcopy(dict(state))
         listener = self._state_listener
         if listener is not None:
             try:
-                listener(plugin_id, dict(state))
+                listener(plugin_id, copy.deepcopy(dict(state)))
             except Exception:  # noqa: BLE001 - 宿主回调失败不影响插件
                 self._logger.exception("插件状态回调失败：%s", plugin_id)
 
@@ -554,4 +798,9 @@ class PluginManager:
         total = len(self._records)
         loaded = sum(1 for record in self._records.values() if record.loaded)
         failed = sum(1 for record in self._records.values() if record.error)
-        return f"共 {total} 个，已加载 {loaded} 个，异常 {failed} 个"
+        nav_items = sum(len(record.nav_items) for record in self._records.values())
+        widgets = sum(len(record.widgets) for record in self._records.values())
+        return (
+            f"共 {total} 个，已加载 {loaded} 个，异常 {failed} 个，"
+            f"导航入口 {nav_items} 个，遮罩组件 {widgets} 个"
+        )

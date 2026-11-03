@@ -1,0 +1,10 @@
+{
+  "id": "com.example.basic",
+  "name": "基础插件模板",
+  "version": "1.0.0",
+  "api_version": "0.1",
+  "entry": "main.py",
+  "author": "你的名字",
+  "description": "最小可跑插件模板：注册一个导航入口页。",
+  "default_enabled": true
+}

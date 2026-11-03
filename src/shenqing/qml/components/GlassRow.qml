@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "Constants.js" as C
 
 // 设置行：左标题 + 右值/自定义尾部 + 可选 chevron
@@ -13,7 +14,7 @@ Item {
     property bool expandable: false
     property bool expanded: false
     property int titleSize: 15
-    property string titleColor: C.textPrimary
+    property string titleColor: AppTheme.textPrimary
     property int rowHeight: 62
 
     implicitHeight: rowHeight
@@ -51,7 +52,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.value
             visible: root.value !== ""
-            color: C.textSecondary
+            color: AppTheme.textSecondary
             font.pixelSize: 14
             font.family: C.numFont
         }
@@ -68,7 +69,7 @@ Item {
             visible: root.showChevron
             kind: root.expandable && root.expanded ? "chevronDown" : "chevron"
             size: 13
-            color: C.textTertiary
+            color: AppTheme.textTertiary
         }
     }
 

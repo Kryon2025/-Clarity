@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
@@ -51,10 +52,23 @@ Item {
             }
         }
 
+        // 0) 纯色 / 浅色主题：平面卡片
+        Rectangle {
+            anchors.fill: parent
+            visible: !AppTheme.glass
+            radius: root.radius
+            color: root.selected
+                   ? AppTheme.cardBgAlt
+                   : ((root.interactive && pointer.containsMouse) ? AppTheme.cardBgAlt : AppTheme.cardBg)
+            border.width: 1
+            border.color: root.selected ? AppTheme.cardBorderStrong : AppTheme.cardBorder
+            Behavior on color { ColorAnimation { duration: 140 } }
+        }
+
         // 0) 真·液态玻璃：采样背景层做透镜折射 + 色散 + 边缘高光
         LiquidGlass {
             anchors.fill: parent
-            visible: root.glassSource !== null
+            visible: AppTheme.glass && root.glassSource !== null
             sourceItem: root.glassSource
             radius: root.radius
             depth: root.glassDepth
@@ -63,7 +77,7 @@ Item {
             highlight: root.selected ? 1.0 : 0.7
             whiten: 0.015
             tintAlpha: root.selected ? 0.24 : root.glassTintAlpha
-            tint: C.glassTint
+            tint: AppTheme.glassTint
             sheen: 0.3
         }
 
@@ -71,7 +85,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: root.radius
-            visible: root.glassSource === null
+            visible: AppTheme.glass && root.glassSource === null
             color: root.selected ? "#2A050A14" : (pointer.containsMouse ? "#26050A12" : "#22050A12")
             Behavior on color { ColorAnimation { duration: 180 } }
         }
@@ -80,7 +94,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: root.radius
-            visible: root.glassSource === null
+            visible: AppTheme.glass && root.glassSource === null
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#0FFFFFFF" }
                 GradientStop { position: 0.45; color: "#07FFFFFF" }
@@ -91,9 +105,10 @@ Item {
             }
         }
 
-        // 3) 边缘 1px：高对比，hover 更亮
+        // 3) 边缘 1px：高对比，hover 更亮（仅玻璃主题）
         Rectangle {
             anchors.fill: parent
+            visible: AppTheme.glass
             radius: root.radius
             color: "transparent"
             border.width: 1
@@ -105,6 +120,7 @@ Item {
 
         // 4) 顶部镜面高光：一条两端渐隐的亮线（液态玻璃的关键特征）
         Rectangle {
+            visible: AppTheme.glass
             x: root.radius * 1.1
             y: 1.0
             width: Math.max(0, parent.width * 0.56)
@@ -121,6 +137,7 @@ Item {
         // 5) 左上斜向反光（很淡的一道）
         Item {
             anchors.fill: parent
+            visible: AppTheme.glass
             clip: true
             Rectangle {
                 width: parent.width * 0.55
@@ -141,6 +158,7 @@ Item {
 
         // 6) 底部内侧微暗线：做出玻璃厚度感
         Rectangle {
+            visible: AppTheme.glass
             x: root.radius * 0.7
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 0.8

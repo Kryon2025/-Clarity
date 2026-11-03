@@ -1,8 +1,10 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
-// 小号圆形玻璃按钮（灵动岛控制键、面板快捷键）：无 hover 动效，按住形变
+// 小号圆形按钮（灵动岛控制键、面板快捷键）。
+// glass 主题：玻璃珠 + 按住形变；solid / light 主题：平面圆钮 + 按下 0.98 缩放。
 Item {
     id: root
     property string glyph: "play"
@@ -21,6 +23,9 @@ Item {
         return null
     }
 
+    readonly property bool useGlass: AppTheme.glass && root.glassSource !== null
+    readonly property bool hovered: pointer.containsMouse
+
     property bool held: false
     property point pressPoint: Qt.point(0.5, 0.5)
     signal clicked()
@@ -28,9 +33,23 @@ Item {
     width: size
     height: size
 
+    scale: !root.useGlass && pointer.pressed ? 0.98 : 1.0
+    Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+
+    // 平面底
+    Rectangle {
+        anchors.fill: parent
+        visible: !root.useGlass
+        radius: width / 2
+        color: root.hovered ? AppTheme.buttonBgAlt : AppTheme.buttonBg
+        border.width: 1
+        border.color: AppTheme.buttonBorder
+        Behavior on color { ColorAnimation { duration: 120 } }
+    }
+
     LiquidGlass {
         anchors.fill: parent
-        visible: root.glassSource !== null
+        visible: root.useGlass
         sourceItem: root.glassSource
         radius: root.size / 2
         depth: 1.15
@@ -39,7 +58,7 @@ Item {
         highlight: 1.45
         whiten: 0.05
         tintAlpha: 0.14
-        tint: C.glassTint
+        tint: AppTheme.glassTint
         sheen: 0.5
         pointer: root.pressPoint
         pull: root.held ? 1 : 0
@@ -55,16 +74,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        visible: root.glassSource === null
-        radius: width / 2
-        color: "#1FFFFFFF"
-        border.width: 1
-        border.color: "#4DFFFFFF"
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        visible: root.glassSource !== null
+        visible: root.useGlass
         radius: width / 2
         color: "transparent"
         border.width: 1
@@ -75,7 +85,7 @@ Item {
         anchors.centerIn: parent
         kind: root.glyph
         size: Math.round(root.size * 0.44)
-        color: "#EAF8FB"
+        color: root.useGlass ? "#EAF8FB" : AppTheme.textPrimary
     }
 
     MouseArea {

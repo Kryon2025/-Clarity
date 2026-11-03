@@ -7,6 +7,9 @@ v0.2：数据模型改为「空间（Space）」，会话围绕空间展开：
 from __future__ import annotations
 
 import logging
+import os
+import time
+from pathlib import Path
 
 from PySide6.QtCore import (
     QCoreApplication,
@@ -21,15 +24,21 @@ from PySide6.QtCore import (
 
 from ..consts import (
     APP_ALIAS,
+    CHANGELOG,
     APP_NAME,
     APP_VERSION,
     ATMOSPHERES,
+    DEFAULT_THEME,
+    FEEDBACK_URLS,
     MAX_MINUTES,
     MIN_MINUTES,
+    MODE_LABELS,
     PRESET_MINUTES,
     SPACE_MAX_MINUTES,
     SPACE_MIN_MINUTES,
     SPACE_MINUTE_STEP,
+    THEMES,
+    TRIAL_MINUTES,
     LockLevel,
 )
 from ..core.app_catalog import load_cached, load_catalog
@@ -72,6 +81,15 @@ class _CatalogScan(QRunnable):
             pass
 
 
+def _path_to_url(path: object) -> str:
+    if not path:
+        return ""
+    try:
+        return Path(str(path)).as_uri()
+    except Exception:  # noqa: BLE001
+        return str(path)
+
+
 class AppBridge(QObject):
     """QML 只能看到这个对象：属性负责状态，Slot 负责动作。"""
 
@@ -83,9 +101,11 @@ class AppBridge(QObject):
     pluginsChanged = Signal()
     lockedChanged = Signal()
     settingsChanged = Signal()
-    themeChanged = Signal()
+    themeChanged = Signal(str)
     toast = Signal(str)
     guardEvent = Signal(str)
+    #: v0.6：从覆清 dock 启动白名单应用成功（携带 exe 名/路径），供主程序把应用窗口提到遮罩之上
+    appLaunched = Signal(str)
     mediaChanged = Signal()
     showMainRequested = Signal()
     settingsRequested = Signal()
@@ -110,8 +130,11 @@ class AppBridge(QObject):
         self._hardening = LockHardening(self)
         self._active_space_id = ""
         self._session_level = ""
+        self._trial_active = False
+        self._trial_times: list[float] = []
+        self._preview_active = False
+        self._preview_level = ""
         self._media_info: dict = {}
-        self._draft: dict = {}
         self._catalog: list[dict] = load_cached()
         self._catalog_scanning = False
         self._plugins = self._init_plugins()
@@ -182,6 +205,54 @@ class AppBridge(QObject):
         except Exception:  # noqa: BLE001
             return []
 
+    @Property(list, notify=pluginsChanged)
+    def pluginNavItems(self) -> list[dict]:
+        """插件注册的导航入口（导航「插件」展开后的子项）。"""
+        if self._plugins is None:
+            return []
+        getter = getattr(self._plugins, "list_nav_items", None)
+        if getter is None:
+            return []
+        try:
+            items = list(getter())
+        except Exception:  # noqa: BLE001
+            return []
+        return [
+            {
+                "id": str(item.get("itemId") or item.get("id") or ""),
+                "title": str(item.get("title") or ""),
+                "icon": str(item.get("icon") or "grid"),
+                "qmlPath": _path_to_url(item.get("qmlPath")),
+                "pluginId": str(item.get("pluginId") or ""),
+            }
+            for item in items
+        ]
+
+    @Property(list, notify=pluginsChanged)
+    def pluginWidgets(self) -> list[dict]:
+        """插件注册的全屏遮罩组件。"""
+        if self._plugins is None:
+            return []
+        getter = getattr(self._plugins, "list_widgets", None)
+        if getter is None:
+            return []
+        try:
+            widgets = list(getter())
+        except Exception:  # noqa: BLE001
+            return []
+        return [
+            {
+                "id": str(item.get("itemId") or item.get("id") or ""),
+                "title": str(item.get("title") or ""),
+                "qmlPath": _path_to_url(item.get("qmlPath")),
+                "anchor": str(item.get("anchor") or "topRight"),
+                "width": int(item.get("width") or 240),
+                "height": int(item.get("height") or 120),
+                "pluginId": str(item.get("pluginId") or ""),
+            }
+            for item in widgets
+        ]
+
     @Slot(str, bool)
     def setPluginEnabled(self, plugin_id: str, enabled: bool) -> None:
         if self._plugins is None:
@@ -205,6 +276,9 @@ class AppBridge(QObject):
     # ================= 空间 =================
     def _space_view(self, space: dict) -> dict:
         view = dict(space)
+        mode = str(space.get("mode", ""))
+        view["mode"] = mode
+        view["fixedName"] = mode == "heavy"
         view["allowedCount"] = len(space.get("allowed_apps", []))
         view["atmosphereLabel"] = str(space.get("atmosphere", ""))
         for item in ATMOSPHERES:
@@ -236,107 +310,126 @@ class AppBridge(QObject):
         space = self._spaces.get(self._active_space_id)
         return str(space["name"]) if space else ""
 
-    @Property(dict, notify=spacesChanged)
-    def draftSpace(self) -> dict:
-        space = self._spaces.get(str(self._draft.get("id", "")))
+    @Property(list, notify=stateChanged)
+    def sessionWhitelist(self) -> list[str]:
+        """当前专注空间的白名单（小写 exe 名）；主程序判断前台窗口是否属于 dock 白名单。"""
+        space = self._spaces.get(self._active_space_id)
         if space is None:
-            return {}
-        view = self._space_view(space)
-        view.update(self._draft.get("fields", {}))
-        return view
+            return []
+        return [str(item).lower() for item in space.get("allowed_apps", [])]
 
-    @Property(list, constant=True)
-    def atmospheres(self) -> list[dict]:
-        return ATMOSPHERES
-
-    @Property(int, constant=True)
-    def spaceMinMinutes(self) -> int:
-        return SPACE_MIN_MINUTES
-
-    @Property(int, constant=True)
-    def spaceMaxMinutes(self) -> int:
-        return SPACE_MAX_MINUTES
-
-    @Property(int, constant=True)
-    def spaceMinuteStep(self) -> int:
-        return SPACE_MINUTE_STEP
-
-    @Slot(result=str)
-    def spacesNew(self) -> str:
-        space = self._spaces.create()
+    # ---------- v0.6 多空间 API ----------
+    @Slot(str, result=str)
+    def addSpaceFor(self, mode: str) -> str:
+        """新增一张空间（浅清/覆清）；深清固定一张，失败返回空串。"""
+        space = self._spaces.add(mode)
         if space is None:
-            self.toast.emit(QCoreApplication.translate("ShenQing", "其他空间已达上限（12 个）"))
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "深清只有一张固定空间，不能新增")
+                if str(mode) == "heavy"
+                else QCoreApplication.translate("ShenQing", "无法新增空间")
+            )
             return ""
         self.spacesChanged.emit()
         self.toast.emit(QCoreApplication.translate("ShenQing", "已新增空间"))
         return str(space["id"])
 
-    @Slot(str, str, int, str)
-    def updateSpace(self, space_id: str, name: str, minutes: int, atmosphere: str) -> None:
-        updated = self._spaces.update(
-            space_id, name=name, minutes=minutes, atmosphere=atmosphere
-        )
-        if updated is not None:
-            self._draft = {"id": space_id, "fields": {}}
-            self.spacesChanged.emit()
+    @Slot(str, str, result=bool)
+    def deleteSpaceFor(self, mode: str, space_id: str) -> bool:
+        """删除一张空间；深清 / 每档最后一张 / 专注中的空间不可删。"""
+        space = self._spaces.get(space_id)
+        if space is None or str(space.get("mode")) != str(mode):
+            return False
+        if str(mode) == "heavy":
+            self.toast.emit(QCoreApplication.translate("ShenQing", "深清空间不可删除"))
+            return False
+        if self._busy_space(space_id):
+            self.toast.emit(QCoreApplication.translate("ShenQing", "专注中不能删除当前空间"))
+            return False
+        if len(self._spaces.by_mode(mode)) <= 1:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "每档至少保留一个空间"))
+            return False
+        if not self._spaces.delete(space_id):
+            return False
+        self.spacesChanged.emit()
+        return True
 
-    @Slot(str)
-    def deleteSpace(self, space_id: str) -> None:
-        if self._spaces.get(space_id) is not None and self._spaces.get(space_id)["super"]:
-            self.toast.emit(QCoreApplication.translate("ShenQing", "主空间不可删除"))
-            return
-        if self._spaces.delete(space_id):
-            if self._active_space_id == space_id:
-                self.stopSession()
-            self._draft = {}
-            self.spacesChanged.emit()
+    def _busy_space(self, space_id: str) -> bool:
+        return bool(space_id) and self._active_space_id == space_id and self.busy
 
-    @Slot(str, list)
-    def setSpaceAllowedApps(self, space_id: str, apps: list) -> None:
-        if self._spaces.set_allowed_apps(space_id, [str(a) for a in apps]):
-            self.spacesChanged.emit()
+    @Slot(str, str, result=bool)
+    def setSpaceName(self, space_id: str, name: str) -> bool:
+        if not self._spaces.set_name(space_id, name):
+            space = self._spaces.get(space_id)
+            if space is not None and str(space.get("mode")) == "heavy":
+                self.toast.emit(QCoreApplication.translate("ShenQing", "深清空间名不可修改"))
+            return False
+        self.spacesChanged.emit()
+        return True
 
-    @Slot(str, str, bool)
-    def toggleSpaceAllowedApp(self, space_id: str, exe: str, enabled: bool) -> None:
-        if self._spaces.toggle_allowed_app(space_id, exe, bool(enabled)):
-            self.spacesChanged.emit()
+    @Slot(str, int, result=bool)
+    def setSpaceMinutes(self, space_id: str, minutes: int) -> bool:
+        if self._spaces.set_minutes(space_id, minutes) is None:
+            return False
+        self.spacesChanged.emit()
+        return True
+
+    @Slot(str, str, bool, result=bool)
+    def toggleSpaceAllowedApp(self, space_id: str, exe: str, enabled: bool) -> bool:
+        space = self._spaces.get(space_id) or self._spaces.get_by_mode(str(space_id))
+        if space is not None and str(space.get("mode")) == "heavy":
+            self.toast.emit(QCoreApplication.translate("ShenQing", "深清空间不设置白名单"))
+            return False
+        if not self._spaces.toggle_allowed_app(space_id, exe, bool(enabled)):
+            return False
+        self.spacesChanged.emit()
+        self.catalogChanged.emit()
+        return True
+
+    @Slot(str, list, result=bool)
+    def setSpaceAllowedApps(self, space_id: str, apps: list) -> bool:
+        if not self._spaces.set_allowed_apps(space_id, [str(a) for a in apps]):
+            return False
+        self.spacesChanged.emit()
+        return True
+
+    # ---------- 旧 QML 浮层兼容（SpaceSettingsSheet 仍可能被加载） ----------
+    @Property(list, constant=True)
+    def atmospheres(self) -> list[dict]:
+        return ATMOSPHERES
+
+    @Property(dict, notify=spacesChanged)
+    def draftSpace(self) -> dict:
+        return {}
 
     @Slot(str)
     def beginEditSpace(self, space_id: str) -> None:
-        if self._spaces.get(space_id) is not None:
-            self._draft = {"id": space_id, "fields": {}}
-            self.spacesChanged.emit()
+        self.spacesChanged.emit()
 
     @Slot(str, str, int, str)
-    def updateDraft(self, space_id: str, name: str, minutes: int, atmosphere: str) -> None:
-        if space_id:
-            self._draft = {
-                "id": space_id,
-                "fields": {"name": name, "minutes": minutes, "atmosphere": atmosphere},
-            }
-            self.spacesChanged.emit()
+    def updateSpace(self, space_id: str, name: str, minutes: int, atmosphere: str) -> None:
+        space = self._spaces.get(space_id)
+        if space is None:
+            return
+        if str(space.get("mode")) != "heavy":
+            self._spaces.set_name(space_id, name)
+        self._spaces.set_minutes(space_id, minutes)
+        self.spacesChanged.emit()
 
     @Slot()
     def commitEditSpace(self) -> None:
-        space_id = str(self._draft.get("id", ""))
-        if not space_id:
-            return
-        fields = self._draft.get("fields", {})
-        space = self._spaces.get(space_id)
-        if space is not None and fields:
-            self._spaces.update(
-                space_id,
-                name=fields.get("name", space["name"]),
-                minutes=fields.get("minutes", space["minutes"]),
-                atmosphere=fields.get("atmosphere", space["atmosphere"]),
-            )
-        self._draft = {}
         self.spacesChanged.emit()
 
     @Slot()
     def cancelEditSpace(self) -> None:
-        self._draft = {}
         self.spacesChanged.emit()
+
+    @Slot(str)
+    def deleteSpace(self, space_id: str) -> None:
+        space = self._spaces.get(space_id)
+        if space is None:
+            return
+        self.deleteSpaceFor(str(space.get("mode")), space_id)
 
     # ================= 会话 =================
     @Property(str, notify=stateChanged)
@@ -459,50 +552,71 @@ class AppBridge(QObject):
             logger.warning("系统通知失败：%s", exc)
             self.toast.emit(f"{title} · {body}")
 
-    @Slot(str)
-    def startSpace(self, space_id: str) -> None:
-        if self._session.state is not SessionState.IDLE:
-            self.toast.emit(QCoreApplication.translate("ShenQing", "已经有正在进行的专注"))
-            return
-        space = self._spaces.get(space_id)
-        if space is None:
-            self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
-            return
-        self._active_space_id = space_id
-        self._session_level = (
-            LockLevel.HEAVY.value if space.get("super") else self.lockLevel
-        )
-        self._guard.set_blacklist(self._blocklist.processes)
-        self._guard.set_whitelist([str(a) for a in space.get("allowed_apps", [])])
-        self._guard.set_interval(int(self._settings.get("guard_interval_ms", 1000)))
-        self._guard.start()
-        self._session.start(int(space["minutes"]), int(self._settings.get("pause_limit", 2)))
-        self.lockedChanged.emit()
-        self._dispatch("session_start", self._space_view(space))
-
-    @Slot(str)
-    def startLevel(self, level: str) -> None:
-        """速启面板：不选空间，直接按强度开始一轮专注。"""
+    def _begin_space_session(
+        self,
+        space: dict | None,
+        level: str,
+        minutes: int,
+        *,
+        trial: bool = False,
+    ) -> None:
+        """以某张空间为载体开始一轮专注（时长/白名单取该空间，档位由调用方决定）。"""
         if self._session.state is not SessionState.IDLE:
             self.toast.emit(QCoreApplication.translate("ShenQing", "已经有正在进行的专注"))
             return
         if level not in {item.value for item in LockLevel}:
             return
-        minutes = int(self._settings.get("default_minutes", 45))
-        # 速启用主空间做载体（白名单/时长仍取主空间）
-        space = self._spaces.get(self._spaces.super_id) if self._spaces.super_id else None
-        self._active_space_id = str(space["id"]) if space else ""
+        self._active_space_id = str(space.get("id") or "") if space else ""
         self._session_level = level
-        self._guard.set_blacklist(self._blocklist.processes)
-        if space is not None:
-            self._guard.set_whitelist([str(a) for a in space.get("allowed_apps", [])])
+        self._trial_active = bool(trial)
+        self._preview_active = False
+        self._preview_level = ""
+        # 深清空间不设置白名单：heavy 会话只保留系统进程（DEFAULT_WHITELIST），
+        # 即使旧数据里残留 allowed_apps 也不加载。
+        if level == LockLevel.HEAVY.value:
+            whitelist: list[str] = []
+        else:
+            whitelist = [str(a) for a in (space.get("allowed_apps", []) if space else [])]
+        self._guard.configure(
+            blacklist=self._blocklist.processes,
+            whitelist=whitelist,
+            strict=level == LockLevel.HEAVY.value,
+            keep_alive=bool(self._settings.get("keep_alive", True)),
+        )
         self._guard.set_interval(int(self._settings.get("guard_interval_ms", 1000)))
         self._guard.start()
-        self._session.start(minutes, int(self._settings.get("pause_limit", 2)))
+        self._session.start(int(minutes), int(self._settings.get("pause_limit", 2)))
         self.lockedChanged.emit()
-        payload = self._space_view(space) if space else {"name": "速启"}
+        payload = (
+            self._space_view(space)
+            if space
+            else {"name": QCoreApplication.translate("ShenQing", "速启")}
+        )
         payload["level"] = level
+        payload["trial"] = bool(trial)
         self._dispatch("session_start", payload)
+
+    @Slot(str)
+    def startSpace(self, space_id: str) -> None:
+        """按该空间自己的时长 / 白名单 / 档位开始一轮专注。"""
+        space = self._spaces.get(space_id)
+        if space is None:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
+            return
+        mode = str(space.get("mode") or "")
+        if mode not in {item.value for item in LockLevel}:
+            mode = self.lockLevel
+        self._begin_space_session(space, mode, int(space.get("minutes", 45)))
+
+    @Slot(str)
+    def startLevel(self, level: str) -> None:
+        """速启面板：不选空间，直接按强度开始一轮专注。"""
+        if level not in {item.value for item in LockLevel}:
+            return
+        minutes = int(self._settings.get("default_minutes", 45))
+        # 速启用该档第一张空间做载体（白名单取它，时长仍按设置）
+        space = self._spaces.get_by_mode(level) or self._spaces.get_by_mode("medium")
+        self._begin_space_session(space, level, minutes)
 
     @Slot()
     def pauseSession(self) -> None:
@@ -520,8 +634,10 @@ class AppBridge(QObject):
     def stopSession(self) -> None:
         if self._session.state is SessionState.IDLE:
             return
-        if self._session_level == LockLevel.HEAVY.value:
-            self.toast.emit(QCoreApplication.translate("ShenQing", "重度模式不可提前结束，等计时走完"))
+        if self._session_level == LockLevel.HEAVY.value and not self._trial_active:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "深清档不可提前结束，等计时走完")
+            )
             return
         self._session.stop()
 
@@ -578,6 +694,30 @@ class AppBridge(QObject):
     @Property(bool, notify=settingsChanged)
     def hardeningEnabled(self) -> bool:
         return bool(self._settings.get("hardening", True))
+
+    @Property(bool, notify=settingsChanged)
+    def navExpanded(self) -> bool:
+        return bool(self._settings.get("nav_expanded", False))
+
+    @Slot(bool)
+    def setNavExpanded(self, expanded: bool) -> None:
+        self._settings.set("nav_expanded", bool(expanded))
+        self.settingsChanged.emit()
+
+    @Property(bool, notify=settingsChanged)
+    def keepAlive(self) -> bool:
+        """True = 不杀进程，只隐藏窗口 + 静音。"""
+        return bool(self._settings.get("keep_alive", True))
+
+    @Slot(bool)
+    def setKeepAlive(self, enabled: bool) -> None:
+        self._settings.set("keep_alive", bool(enabled))
+        self.settingsChanged.emit()
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "不再结束进程，只屏蔽界面与声音")
+            if enabled
+            else QCoreApplication.translate("ShenQing", "已改为直接结束进程")
+        )
 
     @Property(bool, notify=settingsChanged)
     def adminMode(self) -> bool:
@@ -791,6 +931,276 @@ class AppBridge(QObject):
         )
         return str(path)
 
+    # ================= v0.4：单空间 / 三档 / 主题 / 预览体验 / dock / 搜索 =================
+    @Property(dict, notify=spacesChanged)
+    def space(self) -> dict:
+        return self._space_view(self._spaces.space)
+
+    @Property(int, constant=True)
+    def spaceMinMinutes(self) -> int:
+        return SPACE_MIN_MINUTES
+
+    @Property(int, constant=True)
+    def spaceMaxMinutes(self) -> int:
+        return SPACE_MAX_MINUTES
+
+    @Property(int, constant=True)
+    def spaceMinuteStep(self) -> int:
+        return SPACE_MINUTE_STEP
+
+    @Property(int, notify=spacesChanged)
+    def spaceMinutes(self) -> int:
+        return int(self._spaces.space.get("minutes", 45))
+
+    @Slot(str, int)
+    def setSpaceMinutesFor(self, mode: str, minutes: int) -> None:
+        """v0.5 兼容：按档位改时长（映射到该档第一张空间）。"""
+        self._spaces.set_minutes(mode, minutes)
+        self.spacesChanged.emit()
+
+    @Slot(str, str)
+    def setSpaceNameFor(self, mode: str, name: str) -> None:
+        """v0.5 兼容：按档位改名（映射到该档第一张空间）。"""
+        if self._spaces.set_name(mode, name):
+            self.spacesChanged.emit()
+        elif str(mode) == "heavy":
+            self.toast.emit(QCoreApplication.translate("ShenQing", "深清空间名不可修改"))
+
+    @Slot(str, str, bool, result=bool)
+    def toggleSpaceAllowedAppFor(self, mode: str, exe: str, enabled: bool) -> bool:
+        """v0.5 兼容：按档位改白名单（映射到该档第一张空间）；深清拒绝。"""
+        if str(mode) == "heavy":
+            self.toast.emit(QCoreApplication.translate("ShenQing", "深清空间不设置白名单"))
+            return False
+        if self._spaces.toggle_allowed_app(mode, exe, bool(enabled)):
+            self.spacesChanged.emit()
+            self.catalogChanged.emit()
+            return True
+        return False
+
+    @Property(list, constant=True)
+    def modes(self) -> list[dict]:
+        result = []
+        for level in (LockLevel.LIGHT, LockLevel.MEDIUM, LockLevel.HEAVY):
+            result.append(
+                {
+                    "value": level.value,
+                    "label": QCoreApplication.translate("ShenQing", MODE_LABELS[level.value]),
+                    "desc": self._mode_desc(level.value),
+                }
+            )
+        return result
+
+    @staticmethod
+    def _mode_desc(value: str) -> str:
+        if value == "light":
+            return QCoreApplication.translate("ShenQing", "只屏蔽黑名单应用的窗口与声音")
+        if value == "medium":
+            return QCoreApplication.translate("ShenQing", "屏蔽干扰并显示允许使用的应用 dock")
+        return QCoreApplication.translate("ShenQing", "白名单之外的应用全部屏蔽，不可提前结束")
+
+    @Property(str, notify=settingsChanged)
+    def defaultMode(self) -> str:
+        return str(self._settings.get("default_mode", LockLevel.MEDIUM.value))
+
+    @Slot(str)
+    def setDefaultMode(self, mode: str) -> None:
+        if mode not in {item.value for item in LockLevel}:
+            return
+        self._settings.set("default_mode", mode)
+        self.settingsChanged.emit()
+
+    @Property(str, notify=settingsChanged)
+    def themeMode(self) -> str:
+        return str(self._settings.get("theme_mode", DEFAULT_THEME))
+
+    @Slot(str)
+    def setThemeMode(self, theme: str) -> None:
+        valid = {item["value"] for item in THEMES}
+        if theme not in valid:
+            return
+        self._settings.set("theme_mode", theme)
+        self.settingsChanged.emit()
+        self.themeChanged.emit("Light" if theme == "light" else "Dark")
+
+    @Property(list, notify=languageChanged)
+    def changelog(self) -> list[dict]:
+        """更新日志（按当前语言返回中文或英文条目）。"""
+        language = str(self._settings.get("language", "auto"))
+        if language == "auto":
+            from PySide6.QtCore import QLocale
+
+            english = not QLocale.system().name().lower().startswith("zh")
+        else:
+            english = language.startswith("en")
+        result: list[dict] = []
+        for entry in CHANGELOG:
+            items = entry.get("items_en") if english else entry.get("items")
+            result.append(
+                {
+                    "version": str(entry.get("version", "")),
+                    "date": str(entry.get("date", "")),
+                    "tag": str(entry.get("tag", "")),
+                    "items": list(items or entry.get("items") or []),
+                }
+            )
+        return result
+
+    @Property(list, constant=True)
+    def themes(self) -> list[dict]:
+        return [
+            {
+                "value": item["value"],
+                "label": QCoreApplication.translate("ShenQing", item["label"]),
+                "desc": QCoreApplication.translate("ShenQing", item["desc"]),
+                "experimental": bool(item.get("experimental")),
+            }
+            for item in THEMES
+        ]
+
+    @Property(bool, notify=stateChanged)
+    def trialActive(self) -> bool:
+        return self._trial_active
+
+    @Property(bool, notify=stateChanged)
+    def previewActive(self) -> bool:
+        return self._preview_active
+
+    @Property(str, notify=stateChanged)
+    def previewLevel(self) -> str:
+        return self._preview_level
+
+    @Slot(str)
+    def previewMode(self, mode: str) -> None:
+        if mode not in {item.value for item in LockLevel}:
+            return
+        self._preview_active = True
+        self._preview_level = mode
+        self.stateChanged.emit()
+        self.lockedChanged.emit()
+
+    @Slot()
+    def stopPreview(self) -> None:
+        self._preview_active = False
+        self._preview_level = ""
+        self.stateChanged.emit()
+        self.lockedChanged.emit()
+
+    @Slot(str)
+    def startMode(self, mode: str) -> None:
+        """按档位开始：用该档第一张空间的时长与白名单。"""
+        space = self._spaces.get_by_mode(mode)
+        if space is None:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "空间不存在"))
+            return
+        self._begin_space_session(space, mode, int(space.get("minutes", 45)))
+
+    @Slot(str)
+    def startTrial(self, mode: str) -> None:
+        """体验模式：1 分钟真实专注；每小时最多 5 次。"""
+        if mode not in {item.value for item in LockLevel}:
+            return
+        now = time.time()
+        self._trial_times = [t for t in self._trial_times if now - t < 3600]
+        if len(self._trial_times) >= 5:
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "体验次数已用完（每小时最多 5 次）")
+            )
+            return
+        self._trial_times.append(now)
+        space = self._spaces.get_by_mode(mode)
+        self._begin_space_session(space, mode, TRIAL_MINUTES, trial=True)
+
+    @Property(list, notify=spacesChanged)
+    def dockApps(self) -> list[dict]:
+        catalog = {str(item.get("exe", "")).lower(): item for item in self._catalog}
+        result: list[dict] = []
+        medium = self._spaces.get_by_mode("medium") or self._spaces.space
+        for exe in medium.get("allowed_apps", []):
+            item = catalog.get(str(exe).lower())
+            if item is not None:
+                result.append(
+                    {
+                        "exe": exe,
+                        "name": str(item.get("name") or exe),
+                        "iconUrl": str(item.get("iconUrl") or ""),
+                        "path": str(item.get("path") or ""),
+                    }
+                )
+            else:
+                result.append({"exe": exe, "name": exe, "iconUrl": "", "path": ""})
+        return result
+
+    @Slot(str)
+    def launchApp(self, exe: str) -> None:
+        try:
+            catalog = {str(item.get("exe", "")).lower(): item for item in self._catalog}
+            item = catalog.get(str(exe).lower())
+            path = str(item.get("path") or "") if item else ""
+            if path:
+                os.startfile(path)  # noqa: S606 - 用户主动启动白名单应用
+            else:
+                os.startfile(str(exe))  # noqa: S606
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("启动应用失败：%s", exc)
+            self.toast.emit(QCoreApplication.translate("ShenQing", "启动应用失败"))
+            return
+        # 通知主程序：应用已拉起，覆清 dock 需要把它显示到遮罩之上
+        self.appLaunched.emit(str(exe))
+
+    @Slot(str, result=list)
+    def search(self, query: str) -> list[dict]:
+        text = str(query or "").strip().casefold()
+        if not text:
+            return []
+        results: list[dict] = []
+
+        def add(title: str, sub: str, kind: str, payload: object) -> None:
+            if text in title.casefold() or text in sub.casefold():
+                results.append({"title": title, "sub": sub, "kind": kind, "payload": payload})
+
+        add(QCoreApplication.translate("ShenQing", "空间"), QCoreApplication.translate("ShenQing", "清空间与专注设置"), "page", 0)
+        add(QCoreApplication.translate("ShenQing", "数据"), QCoreApplication.translate("ShenQing", "专注统计"), "page", 1)
+        add(QCoreApplication.translate("ShenQing", "插件"), QCoreApplication.translate("ShenQing", "插件管理"), "page", 2)
+        add(QCoreApplication.translate("ShenQing", "设置"), QCoreApplication.translate("ShenQing", "偏好设置"), "page", 3)
+        add(QCoreApplication.translate("ShenQing", "主题"), QCoreApplication.translate("ShenQing", "纯色 / 浅色 / 液态玻璃"), "theme", "")
+        for mode in self.modes:
+            add(mode["label"], mode["desc"], "mode", mode["value"])
+        # v0.6：每张空间也是一条搜索结果（payload 带 id + mode，QML 可跳到空间页）
+        for space in self.spaces:
+            mode = str(space.get("mode") or "")
+            label = QCoreApplication.translate("ShenQing", MODE_LABELS.get(mode, mode))
+            add(
+                str(space.get("name") or ""),
+                label,
+                "space",
+                {"id": str(space.get("id") or ""), "mode": mode},
+            )
+        for theme in self.themes:
+            add(theme["label"], theme["desc"], "theme", theme["value"])
+        for plugin in self.plugins:
+            add(str(plugin.get("name") or ""), str(plugin.get("description") or ""), "plugin", str(plugin.get("id") or ""))
+        for action, label in (
+            ("hardening", QCoreApplication.translate("ShenQing", "防退出加固")),
+            ("admin", QCoreApplication.translate("ShenQing", "以管理员身份运行")),
+            ("autostart", QCoreApplication.translate("ShenQing", "最高权限开机自启")),
+            ("feedback", QCoreApplication.translate("ShenQing", "功能请求与 Bug 反馈")),
+        ):
+            add(label, QCoreApplication.translate("ShenQing", "设置"), "action", action)
+        return results[:20]
+
+    @Slot(str)
+    def openFeedback(self, kind: str) -> None:
+        url = FEEDBACK_URLS.get(str(kind or ""), FEEDBACK_URLS["request"])
+        try:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+
+            QDesktopServices.openUrl(QUrl(url))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("打开反馈页面失败：%s", exc)
+            self.toast.emit(QCoreApplication.translate("ShenQing", "无法打开浏览器"))
+
     # ================= 内部回调 =================
     def _on_tick(self, remaining: int) -> None:
         self.tickChanged.emit()
@@ -801,10 +1211,13 @@ class AppBridge(QObject):
         space = self._spaces.get(self._active_space_id)
         space_name = str(space["name"]) if space else ""
         minutes = elapsed_seconds / 60
-        if completed or minutes >= 1:
+        if self._trial_active:
+            # 体验模式只做演示：不写统计、不影响连续天数
+            self.toast.emit(QCoreApplication.translate("ShenQing", "体验结束"))
+        elif completed or minutes >= 1:
             self._stats.record(
                 minutes,
-                self.lockLevel,
+                self._session_level or self.lockLevel,
                 completed,
                 pauses,
                 space=space_name,
@@ -847,6 +1260,7 @@ class AppBridge(QObject):
             logger.warning("结束通知失败：%s", exc)
         self._active_space_id = ""
         self._session_level = ""
+        self._trial_active = False
         self.stateChanged.emit()
         self.lockedChanged.emit()
 

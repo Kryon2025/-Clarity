@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "../components"
 import "../components/Constants.js" as C
 
@@ -55,7 +56,7 @@ Item {
                     spacing: 6
                     Text {
                         text: qsTr("数据")
-                        color: C.textPrimary
+                        color: AppTheme.textPrimary
                         font.pixelSize: 30
                         font.weight: Font.Bold
                         font.family: C.numFont
@@ -63,7 +64,7 @@ Item {
                     }
                     Text {
                         text: qsTr("看得见的专注，才守得住")
-                        color: C.textSecondary
+                        color: AppTheme.textSecondary
                         font.pixelSize: 13
                         font.family: C.numFont
                     }
@@ -122,13 +123,13 @@ Item {
 
                             Text {
                                 text: modelData.label
-                                color: C.textSecondary
+                                color: AppTheme.textSecondary
                                 font.pixelSize: 12
                                 font.family: C.numFont
                             }
                             Text {
                                 text: modelData.value
-                                      + "<span style='font-size:12px; color:" + C.textSecondary + "'> "
+                                      + "<span style='font-size:12px; color:" + AppTheme.textSecondary + "'> "
                                       + modelData.unit + "</span>"
                                 textFormat: Text.StyledText
                                 color: "#FFFFFF"
@@ -162,7 +163,7 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("近 7 天")
-                            color: C.textPrimary
+                            color: AppTheme.textPrimary
                             font.pixelSize: 16
                             font.weight: Font.DemiBold
                             font.family: C.numFont
@@ -172,7 +173,7 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("共 %1 分钟").arg(page.roundText(page.weekTotal))
-                            color: C.textSecondary
+                            color: AppTheme.textSecondary
                             font.pixelSize: 12
                             font.family: C.numFont
                         }
@@ -217,7 +218,7 @@ Item {
                                         anchors.bottom: bar.top
                                         anchors.bottomMargin: 6
                                         text: page.roundText(modelData.minutes)
-                                        color: parent.today ? "#DCE7FF" : C.textTertiary
+                                        color: parent.today ? "#DCE7FF" : AppTheme.textTertiary
                                         font.pixelSize: 11
                                         font.family: C.numFont
                                     }
@@ -252,7 +253,7 @@ Item {
                                             var d = String(modelData.date)
                                             return d.length >= 10 ? d.slice(5) : d
                                         }
-                                        color: parent.today ? "#B7C3D9" : C.textTertiary
+                                        color: parent.today ? "#B7C3D9" : AppTheme.textTertiary
                                         font.pixelSize: 11
                                         font.family: C.numFont
                                     }

@@ -1,0 +1,10 @@
+{
+  "id": "com.example.widget",
+  "name": "遮罩组件模板",
+  "version": "1.0.0",
+  "api_version": "0.1",
+  "entry": "main.py",
+  "author": "你的名字",
+  "description": "最小遮罩组件模板：在重度锁机遮罩上放一个专注倒计时小组件。",
+  "default_enabled": true
+}

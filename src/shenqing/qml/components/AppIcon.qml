@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "Constants.js" as C
 
 // 应用图标：优先加载 exe 抓出来的 file:// png；失败降级为渐变方块 + 首字
@@ -12,7 +13,7 @@ Item {
     height: size
 
     readonly property color tint: {
-        var palette = [C.accent, C.cyan, C.violet, C.mint, C.rose]
+        var palette = [AppTheme.accent, C.cyan, C.violet, C.mint, C.rose]
         var text = String(root.appName || "")
         var h = 0
         for (var i = 0; i < text.length; i++)

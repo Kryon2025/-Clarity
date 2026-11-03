@@ -1,18 +1,14 @@
 import QtQuick
+import "../theme"
 import "../components"
 import "../components/Constants.js" as C
 
-// 设置页：主题 / 开机自启 / 默认时长 / 插件 / 关于
+// 设置页（v0.4）：权限与防退出 / 语言 / 默认专注时长 / 开机自启 / 关于
+// 主题已移到独立的主题页（顶部菜单「主题」或全局搜索进入）
 Item {
     id: page
 
     property Item glassSource: null
-
-    readonly property var themeChoices: [
-        { value: "Auto", label: qsTr("跟随系统") },
-        { value: "Light", label: qsTr("浅色") },
-        { value: "Dark", label: qsTr("深色") }
-    ]
 
     readonly property var defaultMinutesValue: {
         var value = App.defaultMinutes
@@ -47,7 +43,7 @@ Item {
                     spacing: 6
                     Text {
                         text: qsTr("设置")
-                        color: C.textPrimary
+                        color: AppTheme.textPrimary
                         font.pixelSize: 30
                         font.weight: Font.Bold
                         font.family: C.numFont
@@ -55,64 +51,9 @@ Item {
                     }
                     Text {
                         text: qsTr("%1（%2）v%3").arg(App.appName).arg(App.appAlias).arg(App.version)
-                        color: C.textSecondary
+                        color: AppTheme.textSecondary
                         font.pixelSize: 13
                         font.family: C.numFont
-                    }
-                }
-            }
-
-            // ---------- 外观 ----------
-            GlassCard {
-                width: parent.width
-                height: 108
-                radius: 20
-                interactive: false
-                glassSource: page.glassSource
-
-                Item {
-                    anchors.fill: parent
-                    anchors.margins: 20
-
-                    Text {
-                        id: themeLabel
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        text: qsTr("主题")
-                        color: C.textPrimary
-                        font.pixelSize: 15
-                        font.weight: Font.DemiBold
-                        font.family: C.numFont
-                    }
-
-                    Text {
-                        anchors.left: themeLabel.right
-                        anchors.leftMargin: 8
-                        anchors.top: parent.top
-                        anchors.topMargin: 2
-                        text: qsTr("深色优先的液态玻璃界面")
-                        color: C.textTertiary
-                        font.pixelSize: 12
-                        font.family: C.numFont
-                    }
-
-                    Row {
-                        anchors.left: parent.left
-                        anchors.bottom: parent.bottom
-                        spacing: 10
-
-                        Repeater {
-                            model: page.themeChoices
-                            delegate: GlassButton {
-                                text: modelData.label
-                                tone: App.theme === modelData.value ? "light" : "ghost"
-                                fontSize: 13
-                                padH: 18
-                                minHeight: 36
-                                selected: App.theme === modelData.value
-                                onClicked: App.setTheme(modelData.value)
-                            }
-                        }
                     }
                 }
             }
@@ -147,7 +88,7 @@ Item {
 
                             Text {
                                 text: qsTr("防退出加固")
-                                color: C.textPrimary
+                                color: AppTheme.textPrimary
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
                                 font.family: C.numFont
@@ -155,7 +96,7 @@ Item {
                             Text {
                                 width: parent.width
                                 text: qsTr("锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键")
-                                color: C.textTertiary
+                                color: AppTheme.textTertiary
                                 font.pixelSize: 11
                                 font.family: C.numFont
                                 wrapMode: Text.WordWrap
@@ -179,7 +120,7 @@ Item {
                         width: parent.width - 28
                         x: 14
                         height: 1
-                        color: C.divider
+                        color: AppTheme.divider
                     }
 
                     // 以管理员身份运行
@@ -200,7 +141,7 @@ Item {
 
                                 Text {
                                     text: qsTr("以管理员身份运行")
-                                    color: C.textPrimary
+                                    color: AppTheme.textPrimary
                                     font.pixelSize: 14
                                     font.weight: Font.DemiBold
                                     font.family: C.numFont
@@ -219,7 +160,7 @@ Item {
                             Text {
                                 width: parent.width
                                 text: qsTr("开启后会弹一次 UAC 并以管理员身份重启")
-                                color: C.textTertiary
+                                color: AppTheme.textTertiary
                                 font.pixelSize: 11
                                 font.family: C.numFont
                                 wrapMode: Text.WordWrap
@@ -243,7 +184,7 @@ Item {
                         width: parent.width - 28
                         x: 14
                         height: 1
-                        color: C.divider
+                        color: AppTheme.divider
                     }
 
                     // 最高权限开机自启
@@ -261,7 +202,7 @@ Item {
 
                             Text {
                                 text: qsTr("最高权限开机自启")
-                                color: C.textPrimary
+                                color: AppTheme.textPrimary
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
                                 font.family: C.numFont
@@ -269,7 +210,7 @@ Item {
                             Text {
                                 width: parent.width
                                 text: qsTr("用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员")
-                                color: C.textTertiary
+                                color: AppTheme.textTertiary
                                 font.pixelSize: 11
                                 font.family: C.numFont
                                 wrapMode: Text.WordWrap
@@ -308,7 +249,7 @@ Item {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         text: qsTr("语言")
-                        color: C.textPrimary
+                        color: AppTheme.textPrimary
                         font.pixelSize: 15
                         font.weight: Font.DemiBold
                         font.family: C.numFont
@@ -346,7 +287,7 @@ Item {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         text: qsTr("切换后界面会立即更新；托盘菜单在下次启动时生效。")
-                        color: C.textTertiary
+                        color: AppTheme.textTertiary
                         font.pixelSize: 11
                         font.family: C.numFont
                         wrapMode: Text.WordWrap
@@ -371,7 +312,7 @@ Item {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         text: qsTr("默认专注时长")
-                        color: C.textPrimary
+                        color: AppTheme.textPrimary
                         font.pixelSize: 15
                         font.weight: Font.DemiBold
                         font.family: C.numFont
@@ -382,7 +323,7 @@ Item {
                         anchors.top: parent.top
                         anchors.topMargin: 2
                         text: qsTr("%1 分钟").arg(page.draftDefaultMinutes)
-                        color: C.textSecondary
+                        color: AppTheme.textSecondary
                         font.pixelSize: 13
                         font.family: C.numFont
                     }
@@ -433,12 +374,77 @@ Item {
                 }
             }
 
+            // ---------- 反馈 ----------
+            GlassCard {
+                width: parent.width
+                height: 132
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Item {
+                    anchors.fill: parent
+                    anchors.margins: 20
+
+                    Text {
+                        id: feedbackLabel
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        text: qsTr("反馈")
+                        color: AppTheme.textPrimary
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        font.family: C.numFont
+                    }
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.top: feedbackLabel.bottom
+                        anchors.topMargin: 10
+                        spacing: 10
+
+                        GlassButton {
+                            text: qsTr("功能请求")
+                            fontSize: 13
+                            padH: 16
+                            minHeight: 36
+                            onClicked: App.openFeedback("request")
+                        }
+                        GlassButton {
+                            text: qsTr("Bug 反馈")
+                            fontSize: 13
+                            padH: 16
+                            minHeight: 36
+                            onClicked: App.openFeedback("bug")
+                        }
+                        GlassButton {
+                            text: qsTr("参与讨论")
+                            fontSize: 13
+                            padH: 16
+                            minHeight: 36
+                            onClicked: App.openFeedback("discuss")
+                        }
+                    }
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        text: qsTr("在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: 11
+                        font.family: C.numFont
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
             // ---------- 关于 ----------
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: qsTr("%1（%2）× Windows 专注锁机工具\n数据保存在 %APPDATA%/ShenQing/ · 界面：液态玻璃 v0.2").arg(App.appName).arg(App.appAlias)
-                color: C.textTertiary
+                text: qsTr("%1（%2）v%3 · Windows 专注锁机工具\n数据保存在 %APPDATA%/ShenQing/ · 主题可在左侧导航「主题」中切换").arg(App.appName).arg(App.appAlias).arg(App.version)
+                color: AppTheme.textTertiary
                 font.pixelSize: 12
                 font.family: C.numFont
                 lineHeight: 1.4
