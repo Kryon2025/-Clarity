@@ -608,37 +608,37 @@
         <translation>ShenQing · Entering</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="214"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="220"/>
         <source>浅清</source>
         <translation>Light</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="215"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="221"/>
         <source>覆清</source>
         <translation>Veil</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="216"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="222"/>
         <source>深清</source>
         <translation>ShenQing</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="217"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="223"/>
         <source>专注</source>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="515"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="535"/>
         <source>即将进入 · %1</source>
         <translation>Entering · %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="547"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="567"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="572"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="592"/>
         <source>点击任意位置取消 / Esc</source>
         <translation>Click anywhere to cancel / Esc</translation>
     </message>
