@@ -3,8 +3,9 @@ import QtQuick.Window
 import "../theme"
 import "../components/Constants.js" as C
 
-// v0.8 进入专注倒计时：单 Canvas 绘制 1200 个透明水光点汇聚成发光光圈。
-// 参数在启动时一次性预计算到 Float32Array，30fps 绘制，不做每帧对象分配。
+// v0.8 进入专注倒计时：1000+ 发光水光点从四周出现，向屏幕中心自然流动汇聚（轻微螺旋/切向）。
+// 结束瞬间中心发出一道光波向外扩散，然后切到专注遮罩。
+// 单 Canvas 绘制，参数预计算到 Float32Array，30fps；取消时所有光点向外散开淡出。
 Window {
     id: overlay
     objectName: "EnterCountdown"
@@ -18,16 +19,9 @@ Window {
     property real progress01: 0
     readonly property int particleCount: 1200
     readonly property int dropCount: overlay.particleCount
-    readonly property real ringFill: {
-        var x = Math.max(0, Math.min(1, (overlay.progress01 - 0.08) / 0.84))
-        return x * x * (3 - 2 * x)
-    }
-    readonly property int condensedCount: Math.round(overlay.ringFill * overlay.particleCount)
+    readonly property int condensedCount: Math.round(overlay.progress01 * overlay.particleCount)
     readonly property string prepareLevel: (typeof App !== "undefined" && App.prepareLevel !== undefined) ? String(App.prepareLevel) : ""
     readonly property string prepareSpaceName: (typeof App !== "undefined" && App.prepareSpaceName !== undefined) ? String(App.prepareSpaceName) : ""
-    readonly property real circleSize: Math.max(220, Math.min(width, height) * 0.42)
-    readonly property real ringDrawRadius: overlay.circleSize / 2 + 8
-    readonly property real expandScale: Math.max(1.2, Math.max(width, height) / overlay.circleSize * 1.15)
     readonly property real scatterDistance: Math.max(width, height) * 0.62
 
     property string displaySpaceName: ""
@@ -39,17 +33,19 @@ Window {
     property bool canceling: false
     property int lastRemaining: 10
     property real scatter01: 0
+    property real wave01: 0
     property bool progressSmoothing: true
     Behavior on progress01 {
         enabled: overlay.animationsEnabled && overlay.progressSmoothing
         NumberAnimation { duration: overlay.animationsEnabled ? 1000 : 0; easing.type: Easing.Linear }
     }
 
+    // 预计算粒子参数
     property var pSpawn: null
     property var pStartR: null
     property var pStartA: null
-    property var pTargetA: null
-    property var pTravel: null
+    property var pSwirl: null
+    property var pEndR: null
     property var pSize: null
     property var pPhase: null
     property var pWobAmp: null
@@ -71,31 +67,30 @@ Window {
     function buildParticles() {
         var n = overlay.particleCount
         var spawn = new Float32Array(n), startR = new Float32Array(n), startA = new Float32Array(n)
-        var targetA = new Float32Array(n), travel = new Float32Array(n), size = new Float32Array(n)
+        var swirl = new Float32Array(n), endR = new Float32Array(n), size = new Float32Array(n)
         var phase = new Float32Array(n), wobAmp = new Float32Array(n), wobSpeed = new Float32Array(n)
         var sdx = new Float32Array(n), sdy = new Float32Array(n), sdist = new Float32Array(n), bright = new Float32Array(n)
-        var minDim = Math.min(overlay.width, overlay.height)
+        var maxDim = Math.max(overlay.width, overlay.height)
         for (var i = 0; i < n; i++) {
             var r1 = overlay.rand01(i * 1.37 + 0.11), r2 = overlay.rand01(i * 2.11 + 0.53)
             var r3 = overlay.rand01(i * 3.73 + 0.29), r4 = overlay.rand01(i * 5.19 + 0.71)
             var r5 = overlay.rand01(i * 7.07 + 0.37), r6 = overlay.rand01(i * 9.13 + 0.97)
-            var u = (i + 0.5) / n
-            spawn[i] = 0.02 + 0.80 * Math.pow(u, 0.66) + r1 * 0.03
-            startR[i] = (0.10 + r2 * 0.75) * minDim
+            spawn[i] = 0.02 + r1 * 0.78                            // 0.2s ~ 8s 随机出现
+            startR[i] = (0.12 + r2 * 0.55) * maxDim                // 屏幕随机位置
             startA[i] = r3 * Math.PI * 2
-            targetA[i] = u * Math.PI * 2 + (r4 - 0.5) * 0.35
-            travel[i] = 0.10 + r5 * 0.16
-            size[i] = 0.8 + r6 * 2.6
+            swirl[i] = (r4 - 0.5) * 3.2                            // 轻微螺旋方向/量
+            endR[i] = 1 + r5 * 26                                  // 中心附近落点（越晚越密）
+            size[i] = 0.9 + r6 * 2.8
             phase[i] = r4 * Math.PI * 2
-            wobAmp[i] = 1.2 + r5 * 2.8
-            wobSpeed[i] = 0.6 + r1 * 1.4
-            var sa = r3 * Math.PI * 2
+            wobAmp[i] = 1.0 + r5 * 2.4
+            wobSpeed[i] = 0.7 + r1 * 1.6
+            var sa = r3 * Math.PI * 2 + (r6 - 0.5) * 1.6
             sdx[i] = Math.cos(sa); sdy[i] = Math.sin(sa)
             sdist[i] = overlay.scatterDistance * (0.25 + r6 * 0.95)
-            bright[i] = 0.35 + r2 * 0.65
+            bright[i] = 0.38 + r2 * 0.62
         }
         overlay.pSpawn = spawn; overlay.pStartR = startR; overlay.pStartA = startA
-        overlay.pTargetA = targetA; overlay.pTravel = travel; overlay.pSize = size
+        overlay.pSwirl = swirl; overlay.pEndR = endR; overlay.pSize = size
         overlay.pPhase = phase; overlay.pWobAmp = wobAmp; overlay.pWobSpeed = wobSpeed
         overlay.pScatDx = sdx; overlay.pScatDy = sdy; overlay.pScatDist = sdist; overlay.pBright = bright
     }
@@ -122,14 +117,13 @@ Window {
 
     function startEnter() {
         overlay.closing = false; overlay.expanding = false; overlay.finishing = false
-        overlay.canceling = false; overlay.hasShown = true; overlay.scatter01 = 0
+        overlay.canceling = false; overlay.hasShown = true; overlay.scatter01 = 0; overlay.wave01 = 0
         overlay.syncDisplay(); overlay.lastRemaining = overlay.remaining
         overlay.progressSmoothing = false
         overlay.progress01 = overlay.progressAt(overlay.remaining)
         overlay.progressSmoothing = true
         sceneRoot.opacity = overlay.animationsEnabled ? 0 : 1
-        waterLayer.scale = 1
-        enterAnim.stop(); fadeAnim.stop(); expandAnim.stop(); scatterAnim.stop()
+        enterAnim.stop(); fadeAnim.stop(); scatterAnim.stop(); waveAnim.stop()
         if (overlay.animationsEnabled) enterAnim.restart()
         overlay.show(); overlay.raise(); overlay.requestActivate()
     }
@@ -149,29 +143,31 @@ Window {
     function startFadeOut() {
         if (!overlay.hasShown) return
         overlay.closing = true
-        enterAnim.stop(); expandAnim.stop()
+        enterAnim.stop(); waveAnim.stop()
         if (!overlay.animationsEnabled) {
             sceneRoot.opacity = 0; overlay.closing = false; overlay.hasShown = false; return
         }
         fadeAnim.restart()
     }
+    // 结束瞬间：中心光波扩散
     function startExpand() {
         if (overlay.expanding) return
         overlay.expanding = true; overlay.closing = false
         enterAnim.stop(); fadeAnim.stop(); scatterAnim.stop()
         overlay.scatter01 = 0
         overlay.progressSmoothing = false; overlay.progress01 = 1; overlay.progressSmoothing = true
+        overlay.wave01 = 0
         if (!overlay.animationsEnabled) {
-            waterLayer.scale = overlay.expandScale; sceneRoot.opacity = 0
+            sceneRoot.opacity = 0
             overlay.expanding = false; overlay.hasShown = false; return
         }
-        sceneRoot.opacity = 1; waterLayer.scale = 1
-        expandAnim.restart()
+        sceneRoot.opacity = 1
+        waveAnim.restart()
     }
 
     onShouldShowChanged: {
         if (overlay.shouldShow) overlay.startEnter()
-        else if (overlay.canceling) { /* scatter path */ }
+        else if (overlay.canceling) { /* cancel path */ }
         else if (overlay.hasShown && !overlay.expanding) {
             if (overlay.finishing) overlay.startExpand()
             else overlay.startFadeOut()
@@ -211,20 +207,26 @@ Window {
         easing.type: Easing.OutCubic
         onFinished: overlay.finishCancelHide()
     }
+    NumberAnimation {
+        id: waveAnim
+        target: overlay; property: "wave01"; from: 0; to: 1
+        duration: overlay.animationsEnabled ? 500 : 0
+        easing.type: Easing.OutCubic
+        onFinished: {
+            overlay.expanding = false
+            overlay.finishing = false
+            overlay.hasShown = false
+            sceneRoot.opacity = 0
+        }
+    }
     ParallelAnimation {
         id: enterAnim
-        NumberAnimation { target: sceneRoot; property: "opacity"; from: 0; to: 1; duration: overlay.animationsEnabled ? 200 : 0; easing.type: Easing.OutCubic }
+        NumberAnimation { target: sceneRoot; property: "opacity"; from: 0; to: 1; duration: overlay.animationsEnabled ? 220 : 0; easing.type: Easing.OutCubic }
     }
     ParallelAnimation {
         id: fadeAnim
         NumberAnimation { target: sceneRoot; property: "opacity"; to: 0; duration: overlay.animationsEnabled ? 200 : 0; easing.type: Easing.OutCubic }
         onFinished: { overlay.closing = false; overlay.hasShown = false }
-    }
-    ParallelAnimation {
-        id: expandAnim
-        NumberAnimation { target: waterLayer; property: "scale"; to: overlay.expandScale; duration: overlay.animationsEnabled ? 350 : 0; easing.type: Easing.OutCubic }
-        NumberAnimation { target: sceneRoot; property: "opacity"; to: 0; duration: overlay.animationsEnabled ? 350 : 0; easing.type: Easing.InCubic }
-        onFinished: { overlay.expanding = false; overlay.finishing = false; overlay.hasShown = false }
     }
 
     Item {
@@ -243,104 +245,120 @@ Window {
         }
         MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: overlay.cancel() }
 
-        Item {
-            id: waterLayer
-            objectName: "EnterWater"
+        Canvas {
+            id: field
             anchors.fill: parent
-            scale: 1
-            transformOrigin: Item.Center
+            renderTarget: Canvas.FramebufferObject
+            antialiasing: true
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                var w = width, h = height, cx = w / 2, cy = h / 2
+                var progress = overlay.progress01
+                var scatter = overlay.scatter01
+                var wave = overlay.wave01
+                var twoPi = Math.PI * 2
+                var maxDim = Math.max(w, h)
+                var n = overlay.particleCount
+                var spawn = overlay.pSpawn
 
-            Canvas {
-                id: field
-                anchors.fill: parent
-                renderTarget: Canvas.FramebufferObject
-                antialiasing: true
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.reset()
-                    var w = width, h = height, cx = w / 2, cy = h / 2
-                    var radius = overlay.ringDrawRadius
-                    var progress = overlay.progress01
-                    var scatter = overlay.scatter01
-                    var twoPi = Math.PI * 2
-                    var n = overlay.particleCount
-                    var spawn = overlay.pSpawn
-                    if (spawn !== null && spawn.length === n) {
-                        var startR = overlay.pStartR, startA = overlay.pStartA, targetA = overlay.pTargetA
-                        var travelArr = overlay.pTravel, sizeArr = overlay.pSize, phaseArr = overlay.pPhase
-                        var wobAmpArr = overlay.pWobAmp, wobSpeedArr = overlay.pWobSpeed
-                        var sdx = overlay.pScatDx, sdy = overlay.pScatDy, sdist = overlay.pScatDist
-                        var brightArr = overlay.pBright
-                        var burst = scatter > 0 ? Math.min(1, scatter / 0.14) * (1 - scatter) : 0
-                        ctx.globalCompositeOperation = "lighter"
-                        for (var i = 0; i < n; i++) {
-                            var t = progress - spawn[i]
-                            if (t < 0) continue
-                            var appear = Math.min(1, t / 0.08)
-                            var travel = Math.min(1, Math.max(0, (t - 0.03) / travelArr[i]))
-                            var e = travel * travel * (3 - 2 * travel)
-                            var ang = startA[i] + (targetA[i] - startA[i]) * e
-                                  + Math.sin(progress * twoPi * wobSpeedArr[i] + phaseArr[i]) * wobAmpArr[i] * (1 - e) * Math.PI / 180
-                            var r = startR[i] + (radius - startR[i]) * e
-                            var x = cx + Math.cos(ang) * r
-                            var y = cy + Math.sin(ang) * r
-                            if (scatter > 0) {
-                                x += sdx[i] * sdist[i] * scatter
-                                y += sdy[i] * sdist[i] * scatter
-                            }
-                            var alpha = appear * (0.28 + 0.72 * e) * brightArr[i]
-                            alpha = alpha * (1 - scatter) + burst * 0.85
-                            if (alpha <= 0.01) continue
-                            var sz = sizeArr[i] * (0.6 + 0.8 * e)
-                            ctx.globalAlpha = Math.min(1, alpha * 0.35)
-                            ctx.beginPath(); ctx.arc(x, y, sz * 2.6, 0, twoPi)
-                            ctx.fillStyle = "#2ED3C6"; ctx.fill()
-                            ctx.globalAlpha = Math.min(1, alpha)
-                            ctx.beginPath(); ctx.arc(x, y, sz, 0, twoPi)
-                            ctx.fillStyle = e > 0.7 ? "#DFFBFF" : "#7FE7DA"; ctx.fill()
-                        }
-                        ctx.globalCompositeOperation = "source-over"
-                        ctx.globalAlpha = 1
+                // 中心光晕：随进度增强变大
+                var glow = Math.max(0, Math.min(1, progress * progress * 1.08)) * (1 - wave * 0.9)
+                if (glow > 0.001) {
+                    ctx.globalCompositeOperation = "lighter"
+                    var baseR = Math.max(8, Math.min(w, h) * 0.03 + Math.min(w, h) * 0.15 * glow)
+                    for (var g = 0; g < 5; g++) {
+                        var gr = baseR * (0.35 + g * 0.22)
+                        ctx.globalAlpha = (0.03 + 0.035 * g) * glow
+                        ctx.beginPath(); ctx.arc(cx, cy, gr, 0, twoPi)
+                        ctx.fillStyle = "#2ED3C6"; ctx.fill()
                     }
-                    var track = AppTheme.glass ? "#2BFFFFFF" : "#2AFFFFFF"
-                    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, twoPi)
-                    ctx.strokeStyle = track; ctx.lineWidth = 3; ctx.stroke()
-                    var fill = overlay.ringFill
-                    if (fill > 0.001 && scatter < 0.98) {
-                        var startA2 = -Math.PI / 2
-                        var endA2 = startA2 + twoPi * fill
-                        var lw = 2.5 + 9 * fill
-                        ctx.globalAlpha = (0.55 + 0.45 * fill) * (1 - scatter)
-                        ctx.beginPath(); ctx.arc(cx, cy, radius, startA2, endA2)
-                        ctx.strokeStyle = AppTheme.accent; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.stroke()
-                        if (progress > 0.90) {
-                            var glowT = Math.max(0, Math.min(1, (progress - 0.90) / 0.10))
-                            ctx.globalAlpha = glowT * 0.55 * (1 - scatter)
-                            ctx.beginPath(); ctx.arc(cx, cy, radius, startA2, endA2)
-                            ctx.strokeStyle = AppTheme.accentSoft; ctx.lineWidth = lw + 14; ctx.stroke()
+                    ctx.globalAlpha = 1
+                    ctx.globalCompositeOperation = "source-over"
+                }
+
+                // 水光点：自然出现 → 螺旋向中心流动 → 中心累积
+                if (spawn !== null && spawn.length === n) {
+                    var startR = overlay.pStartR, startA = overlay.pStartA, swirl = overlay.pSwirl
+                    var endR = overlay.pEndR, sizeArr = overlay.pSize, phaseArr = overlay.pPhase
+                    var wobAmpArr = overlay.pWobAmp, wobSpeedArr = overlay.pWobSpeed
+                    var sdx = overlay.pScatDx, sdy = overlay.pScatDy, sdist = overlay.pScatDist
+                    var brightArr = overlay.pBright
+                    var burst = scatter > 0 ? Math.min(1, scatter / 0.14) * (1 - scatter) : 0
+                    ctx.globalCompositeOperation = "lighter"
+                    for (var i = 0; i < n; i++) {
+                        var t = progress - spawn[i]
+                        if (t < 0) continue
+                        var appear = Math.min(1, t / 0.10)
+                        var life = Math.min(1, t / Math.max(0.15, 0.92 - spawn[i]))
+                        var flow = life * life * (3 - 2 * life)
+                        var angle = startA[i] + swirl[i] * flow
+                              + Math.sin(progress * twoPi * wobSpeedArr[i] + phaseArr[i])
+                                * wobAmpArr[i] * (1 - flow * 0.6) * Math.PI / 180
+                        var radius = endR[i] + (startR[i] - endR[i]) * (1 - flow)
+                        var x = cx + Math.cos(angle) * radius
+                        var y = cy + Math.sin(angle) * radius
+                        if (scatter > 0) {
+                            x += sdx[i] * sdist[i] * scatter
+                            y += sdy[i] * sdist[i] * scatter
                         }
-                        ctx.globalAlpha = 1
+                        var brightness = 0.35 + 0.65 * flow
+                        var alpha = appear * brightness * brightArr[i]
+                        alpha = alpha * (1 - scatter) + burst * 0.85
+                        if (alpha <= 0.01) continue
+                        var sz = sizeArr[i] * (0.75 + 0.55 * flow) * (0.4 + 0.6 * appear)
+                        ctx.globalAlpha = Math.min(1, alpha * (0.30 + 0.25 * glow))
+                        ctx.beginPath(); ctx.arc(x, y, sz * 2.8, 0, twoPi)
+                        ctx.fillStyle = "#2ED3C6"; ctx.fill()
+                        ctx.globalAlpha = Math.min(1, alpha)
+                        ctx.beginPath(); ctx.arc(x, y, sz, 0, twoPi)
+                        ctx.fillStyle = flow > 0.6 ? "#E8FCFF" : "#7FE7DA"; ctx.fill()
                     }
+                    ctx.globalCompositeOperation = "source-over"
+                    ctx.globalAlpha = 1
+                }
+
+                // 结束光波：从中心向外扩散的亮环
+                if (wave > 0.0001) {
+                    var maxR = maxDim * 0.72
+                    var waveR = maxR * wave
+                    var fade = 1 - wave
+                    ctx.globalCompositeOperation = "lighter"
+                    ctx.globalAlpha = Math.min(1, 1.15 * fade)
+                    ctx.beginPath(); ctx.arc(cx, cy, waveR, 0, twoPi)
+                    ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 3 + 16 * fade; ctx.stroke()
+                    ctx.globalAlpha = 0.5 * fade
+                    ctx.beginPath(); ctx.arc(cx, cy, waveR * 0.9, 0, twoPi)
+                    ctx.strokeStyle = "#7FE7DA"; ctx.lineWidth = 2 + 10 * fade; ctx.stroke()
+                    ctx.globalAlpha = 0.28 * fade
+                    ctx.beginPath(); ctx.arc(cx, cy, waveR * 1.06, 0, twoPi)
+                    ctx.strokeStyle = "#2ED3C6"; ctx.lineWidth = 2 + 6 * fade; ctx.stroke()
+                    ctx.globalAlpha = Math.min(1, (1 - wave) * 1.4)
+                    ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, 18 * fade + 4), 0, twoPi)
+                    ctx.fillStyle = "#FFFFFF"; ctx.fill()
+                    ctx.globalAlpha = 1
+                    ctx.globalCompositeOperation = "source-over"
                 }
             }
         }
 
         Column {
             anchors.centerIn: parent
-            spacing: Math.round(overlay.circleSize * 0.045)
+            spacing: 10
+            opacity: 1 - overlay.wave01 * 0.92
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: String(overlay.shouldShow ? overlay.remaining : overlay.lastRemaining)
                 color: AppTheme.textPrimary
                 font.family: C.monoFont
-                font.pixelSize: Math.round(overlay.circleSize * 0.30)
+                font.pixelSize: Math.max(96, Math.min(overlay.width * 0.13, overlay.height * 0.22))
                 font.weight: Font.Light
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: qsTr("即将进入 · %1").arg(overlay.displaySpaceLabel())
                 color: AppTheme.textSecondary
-                font.pixelSize: Math.max(14, Math.round(overlay.circleSize * 0.055))
+                font.pixelSize: Math.max(14, Math.round(overlay.height * 0.02))
                 font.family: C.numFont
                 font.letterSpacing: 1
             }
@@ -351,6 +369,7 @@ Window {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Math.max(34, Math.round(overlay.height * 0.06))
             spacing: 12
+            opacity: 1 - overlay.wave01 * 0.92
             Item {
                 id: cancelButton
                 objectName: "EnterCancelButton"

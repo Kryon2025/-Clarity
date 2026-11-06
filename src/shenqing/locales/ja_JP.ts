@@ -535,42 +535,42 @@
 <context>
     <name>EnterCountdown</name>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="11"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="12"/>
         <source>深清 · 即将进入</source>
         <translation>ShenQing · Entering</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="104"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="99"/>
         <source>浅清</source>
         <translation>Light</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="105"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="100"/>
         <source>覆清</source>
         <translation>Veil</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="106"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="101"/>
         <source>深清</source>
         <translation>ShenQing</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="107"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="102"/>
         <source>专注</source>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="341"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="359"/>
         <source>即将进入 · %1</source>
         <translation>Entering · %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="370"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="389"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="385"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="404"/>
         <source>点击任意位置取消 / Esc</source>
         <translation>Click anywhere to cancel / Esc</translation>
     </message>
@@ -1559,26 +1559,26 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">The main space cannot be deleted</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1017"/>
-        <location filename="../bridge/app_bridge.py" line="1061"/>
-        <location filename="../bridge/app_bridge.py" line="1075"/>
-        <location filename="../bridge/app_bridge.py" line="1654"/>
+        <location filename="../bridge/app_bridge.py" line="1034"/>
+        <location filename="../bridge/app_bridge.py" line="1078"/>
+        <location filename="../bridge/app_bridge.py" line="1092"/>
+        <location filename="../bridge/app_bridge.py" line="1677"/>
         <source>已经有正在进行的专注</source>
         <translation>A focus session is already running</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1058"/>
-        <location filename="../bridge/app_bridge.py" line="1651"/>
+        <location filename="../bridge/app_bridge.py" line="1075"/>
+        <location filename="../bridge/app_bridge.py" line="1674"/>
         <source>空间不存在</source>
         <translation>Space not found</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1082"/>
+        <location filename="../bridge/app_bridge.py" line="1099"/>
         <source>重度模式不可暂停</source>
         <translation>Heavy mode cannot be paused</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1085"/>
+        <location filename="../bridge/app_bridge.py" line="1102"/>
         <source>暂停次数已用完</source>
         <translation>No pauses left</translation>
     </message>
@@ -1587,93 +1587,93 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation type="vanished">Heavy mode cannot end early — wait for the timer</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1097"/>
+        <location filename="../bridge/app_bridge.py" line="1114"/>
         <source>深清档不可提前结束，等计时走完</source>
         <translation>Deep mode can&apos;t end early — wait for the timer</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1175"/>
+        <location filename="../bridge/app_bridge.py" line="1192"/>
         <source>不再结束进程，只屏蔽界面与声音</source>
         <translation>Apps are now hidden and muted instead of being closed</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1177"/>
+        <location filename="../bridge/app_bridge.py" line="1194"/>
         <source>已改为直接结束进程</source>
         <translation>Switched to closing processes directly</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1196"/>
+        <location filename="../bridge/app_bridge.py" line="1213"/>
         <source>防退出加固已开启</source>
         <translation>Lock hardening enabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1198"/>
+        <location filename="../bridge/app_bridge.py" line="1215"/>
         <source>防退出加固已关闭</source>
         <translation>Lock hardening disabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1210"/>
+        <location filename="../bridge/app_bridge.py" line="1227"/>
         <source>当前已是管理员权限</source>
         <translation>Already running as administrator</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1212"/>
+        <location filename="../bridge/app_bridge.py" line="1229"/>
         <source>正在请求管理员权限…</source>
         <translation>Requesting administrator rights…</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1217"/>
+        <location filename="../bridge/app_bridge.py" line="1234"/>
         <source>提权失败：用户取消了 UAC 或策略禁止</source>
         <translation>Elevation failed: UAC was cancelled or blocked by policy</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1224"/>
+        <location filename="../bridge/app_bridge.py" line="1241"/>
         <source>最高权限自启需要先以管理员身份运行</source>
         <translation>Elevated autostart requires running as administrator first</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1231"/>
+        <location filename="../bridge/app_bridge.py" line="1248"/>
         <source>设置失败，请检查权限</source>
         <translation>Failed to apply — check permissions</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1241"/>
+        <location filename="../bridge/app_bridge.py" line="1258"/>
         <source>已开启最高权限自启</source>
         <translation>Elevated autostart enabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1243"/>
+        <location filename="../bridge/app_bridge.py" line="1260"/>
         <source>已关闭最高权限自启</source>
         <translation>Elevated autostart disabled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1285"/>
+        <location filename="../bridge/app_bridge.py" line="1302"/>
         <source>跟随系统</source>
         <translation>Follow system</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1332"/>
+        <location filename="../bridge/app_bridge.py" line="1355"/>
         <source>正在扫描本机应用…</source>
         <translation>Scanning installed apps…</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1363"/>
+        <location filename="../bridge/app_bridge.py" line="1386"/>
         <source>已开启最高权限自启，普通自启不再需要</source>
         <translation>Elevated autostart is on; the normal autostart is not needed</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1394"/>
+        <location filename="../bridge/app_bridge.py" line="1417"/>
         <source>导出失败：{0}</source>
         <translation>Export failed: {0}</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1398"/>
+        <location filename="../bridge/app_bridge.py" line="1421"/>
         <source>已导出：{0}</source>
         <translation>Exported: {0}</translation>
     </message>
     <message>
         <location filename="../bridge/app_bridge.py" line="415"/>
-        <location filename="../bridge/app_bridge.py" line="1435"/>
+        <location filename="../bridge/app_bridge.py" line="1458"/>
         <source>深清空间名不可修改</source>
         <translation>The Deep space name cannot be changed</translation>
     </message>
@@ -1704,7 +1704,7 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
     </message>
     <message>
         <location filename="../bridge/app_bridge.py" line="431"/>
-        <location filename="../bridge/app_bridge.py" line="1441"/>
+        <location filename="../bridge/app_bridge.py" line="1464"/>
         <source>深清空间不设置白名单</source>
         <translation>The Deep space has no allowlist</translation>
     </message>
@@ -1779,200 +1779,200 @@ Data: %APPDATA%/ShenQing/ · UI: Liquid Glass v0.2</translation>
         <translation>Sleep mode: ShenQing locked automatically</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1002"/>
+        <location filename="../bridge/app_bridge.py" line="1019"/>
         <source>日期格式应为 YYYY-MM-DD</source>
         <translation>Date format should be YYYY-MM-DD</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1047"/>
+        <location filename="../bridge/app_bridge.py" line="1064"/>
         <source>速启</source>
         <translation>Quick start</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1465"/>
+        <location filename="../bridge/app_bridge.py" line="1488"/>
         <source>只屏蔽黑名单应用的窗口与声音</source>
         <translation>Hides and mutes blacklisted apps only</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1467"/>
+        <location filename="../bridge/app_bridge.py" line="1490"/>
         <source>屏蔽干扰并显示允许使用的应用 dock</source>
         <translation>Blocks distractions and shows a dock of allowed apps</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1468"/>
+        <location filename="../bridge/app_bridge.py" line="1491"/>
         <source>白名单之外的应用全部屏蔽，不可提前结束</source>
         <translation>Blocks everything outside the allowlist; cannot end early</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1667"/>
+        <location filename="../bridge/app_bridge.py" line="1690"/>
         <source>体验次数已用完（每小时最多 5 次）</source>
         <translation>Trial limit reached (5 per hour)</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1706"/>
+        <location filename="../bridge/app_bridge.py" line="1729"/>
         <source>启动应用失败</source>
         <translation>Failed to launch app</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1784"/>
+        <location filename="../bridge/app_bridge.py" line="1807"/>
         <source>检查更新失败</source>
         <translation>Failed to check for updates</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1793"/>
+        <location filename="../bridge/app_bridge.py" line="1816"/>
         <source>发现新版本 {0}，可在关于页更新</source>
         <translation>New version {0} available — update from the About page</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1825"/>
+        <location filename="../bridge/app_bridge.py" line="1848"/>
         <source>没有可下载的安装包</source>
         <translation>No installer available</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1857"/>
+        <location filename="../bridge/app_bridge.py" line="1880"/>
         <source>安装包已下载完成</source>
         <translation>Installer downloaded</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1861"/>
+        <location filename="../bridge/app_bridge.py" line="1884"/>
         <source>下载失败或被取消</source>
         <translation>Download failed or was cancelled</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1868"/>
+        <location filename="../bridge/app_bridge.py" line="1891"/>
         <source>安装包尚未下载完成</source>
         <translation>Installer is not downloaded yet</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1880"/>
+        <location filename="../bridge/app_bridge.py" line="1903"/>
         <source>无法启动安装程序</source>
         <translation>Could not launch the installer</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1883"/>
+        <location filename="../bridge/app_bridge.py" line="1906"/>
         <source>安装程序已启动，安装完成后请重新打开深清</source>
         <translation>Installer started — reopen ShenQing after installation</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1910"/>
+        <location filename="../bridge/app_bridge.py" line="1933"/>
         <source>空间</source>
         <translation>Spaces</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1910"/>
+        <location filename="../bridge/app_bridge.py" line="1933"/>
         <source>清空间与专注设置</source>
         <translation>Clarity Space and focus settings</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1911"/>
+        <location filename="../bridge/app_bridge.py" line="1934"/>
         <source>数据</source>
         <translation>Stats</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1911"/>
+        <location filename="../bridge/app_bridge.py" line="1934"/>
         <source>专注统计</source>
         <translation>Focus stats</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1912"/>
+        <location filename="../bridge/app_bridge.py" line="1935"/>
         <source>插件</source>
         <translation>Plugins</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1912"/>
+        <location filename="../bridge/app_bridge.py" line="1935"/>
         <source>插件管理</source>
         <translation>Plugin management</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1913"/>
-        <location filename="../bridge/app_bridge.py" line="1937"/>
+        <location filename="../bridge/app_bridge.py" line="1936"/>
+        <location filename="../bridge/app_bridge.py" line="1960"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1913"/>
+        <location filename="../bridge/app_bridge.py" line="1936"/>
         <source>偏好设置</source>
         <translation>Preferences</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1914"/>
+        <location filename="../bridge/app_bridge.py" line="1937"/>
         <source>主题</source>
         <translation>Theme</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1914"/>
+        <location filename="../bridge/app_bridge.py" line="1937"/>
         <source>纯色 / 浅色 / 液态玻璃</source>
         <translation>Solid / Light / Liquid Glass</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1932"/>
+        <location filename="../bridge/app_bridge.py" line="1955"/>
         <source>防退出加固</source>
         <translation>Lock hardening</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1933"/>
+        <location filename="../bridge/app_bridge.py" line="1956"/>
         <source>以管理员身份运行</source>
         <translation>Run as administrator</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1934"/>
+        <location filename="../bridge/app_bridge.py" line="1957"/>
         <source>最高权限开机自启</source>
         <translation>Elevated autostart</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1935"/>
+        <location filename="../bridge/app_bridge.py" line="1958"/>
         <source>功能请求与 Bug 反馈</source>
         <translation>Feature requests and bug reports</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1897"/>
-        <location filename="../bridge/app_bridge.py" line="1950"/>
+        <location filename="../bridge/app_bridge.py" line="1920"/>
+        <location filename="../bridge/app_bridge.py" line="1973"/>
         <source>无法打开浏览器</source>
         <translation>Could not open the browser</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1967"/>
+        <location filename="../bridge/app_bridge.py" line="1990"/>
         <source>体验结束</source>
         <translation>Trial finished</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1980"/>
+        <location filename="../bridge/app_bridge.py" line="2003"/>
         <source>本轮专注完成，休息一下</source>
         <translation>Session complete — take a break</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1982"/>
+        <location filename="../bridge/app_bridge.py" line="2005"/>
         <source>本轮专注已结束</source>
         <translation>Session ended</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1985"/>
+        <location filename="../bridge/app_bridge.py" line="2008"/>
         <source>专注时间太短，未计入统计</source>
         <translation>Too short to count</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="1998"/>
+        <location filename="../bridge/app_bridge.py" line="2021"/>
         <source>专注完成</source>
         <translation>Focus complete</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2000"/>
-        <location filename="../bridge/app_bridge.py" line="2008"/>
+        <location filename="../bridge/app_bridge.py" line="2023"/>
+        <location filename="../bridge/app_bridge.py" line="2031"/>
         <source>专注</source>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2001"/>
+        <location filename="../bridge/app_bridge.py" line="2024"/>
         <source>休息一下</source>
         <translation>Take a break</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2006"/>
+        <location filename="../bridge/app_bridge.py" line="2029"/>
         <source>专注结束</source>
         <translation>Focus ended</translation>
     </message>
     <message>
-        <location filename="../bridge/app_bridge.py" line="2009"/>
+        <location filename="../bridge/app_bridge.py" line="2032"/>
         <source>{0} 分钟</source>
         <translation>{0} min</translation>
     </message>

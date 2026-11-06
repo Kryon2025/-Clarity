@@ -905,6 +905,23 @@ class AppBridge(QObject):
             f"{quote}"
         )
 
+    @Property(str, constant=True)
+    def dataDir(self) -> str:
+        """用户数据目录（%APPDATA%/ShenQing），供 QML 保存图片等。"""
+        return str(app_data_dir())
+
+    @Slot(result=str)
+    def newSummaryImagePath(self) -> str:
+        """生成一个可写的「今日专注卡片」PNG 路径（QML grabToImage 用）。"""
+        from datetime import datetime
+
+        folder = app_data_dir() / "summary"
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            return ""
+        return str(folder / f"focus-{datetime.now():%Y%m%d-%H%M%S}.png")
+
     @Slot(result=str)
     def saveSummaryImage(self) -> str:
         """预留：结束卡片图片保存由 QML 的 grabToImage 完成，后端暂不渲染。"""
@@ -1289,7 +1306,13 @@ class AppBridge(QObject):
 
     @Slot(str)
     def setLanguage(self, code: str) -> None:
-        if code not in ("auto", "zh_CN", "en_US"):
+        try:
+            from ..i18n import supported_codes
+
+            allowed = set(supported_codes()) | {"auto"}
+        except Exception:  # noqa: BLE001
+            allowed = {"auto", "zh_CN", "en_US"}
+        if code not in allowed:
             return
         self._settings.set("language", code)
         if self._translator is not None:
