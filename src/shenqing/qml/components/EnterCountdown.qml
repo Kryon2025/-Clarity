@@ -20,6 +20,8 @@ Window {
                                       ? Math.max(0, Number(App.prepareRemaining)) : 10
     property real progress01: 0
     readonly property int particleCount: 1000
+    // Canvas 降分辨率倍率（1=原生；0.42 在软件渲染下仍保持 30fps，粒子本身是柔光）
+    readonly property real fieldDownscale: 0.42
     readonly property int dropCount: overlay.particleCount
     readonly property int condensedCount: overlay.particleCount
     readonly property string prepareLevel: (typeof App !== "undefined" && App.prepareLevel !== undefined) ? String(App.prepareLevel) : ""
@@ -163,12 +165,16 @@ Window {
             var falloff = 1 + 420 / (r + 90)
             var gravity = gravityBase * speedLayer * falloff
             var phase = PHASE[i]
-            // 伪 curl noise：两组 sin/cos 组合成平滑向量场，不用噪声库
-            var f1 = Math.sin(y * 0.012 + t * 0.82 + phase) * Math.cos(x * 0.009 - t * 0.55 + phase * 0.7)
-            var f2 = Math.cos(x * 0.014 - t * 0.71 + phase * 1.3) * Math.sin(y * 0.011 + t * 0.96 + phase)
             var swirl = swirlBase * DIR[i] * speedLayer * (0.45 + 0.55 * Math.min(2.2, falloff * 0.5))
-            var ax = nx * gravity - ny * swirl + f2 * 30
-            var ay = ny * gravity + nx * swirl + f1 * 30
+            var ax = nx * gravity - ny * swirl
+            var ay = ny * gravity + nx * swirl
+            // 伪 curl noise：中层/近层才采样（远层小暗，省算力）
+            if (layer !== 0) {
+                var f1 = Math.sin(y * 0.012 + t * 0.82 + phase) * Math.cos(x * 0.009 - t * 0.55 + phase * 0.7)
+                var f2 = Math.cos(x * 0.014 - t * 0.71 + phase * 1.3) * Math.sin(y * 0.011 + t * 0.96 + phase)
+                ax += f2 * 30
+                ay += f1 * 30
+            }
             if (wave > 0.0001) {
                 var push = wave * 1150 * speedLayer
                 ax -= nx * push
@@ -366,13 +372,20 @@ Window {
 
         Canvas {
             id: field
-            anchors.fill: parent
+            // 半分辨率渲染再放大：单 Canvas 1200 粒子在软件渲染下也能稳定 30fps
+            width: Math.max(1, Math.round(overlay.width * overlay.fieldDownscale))
+            height: Math.max(1, Math.round(overlay.height * overlay.fieldDownscale))
+            anchors.left: parent.left
+            anchors.top: parent.top
+            scale: 1 / overlay.fieldDownscale
+            transformOrigin: Item.TopLeft
             renderTarget: Canvas.FramebufferObject
             antialiasing: true
             onPaint: {
                 var ctx = getContext("2d")
                 ctx.reset()
-                var w = width, h = height, cx = w / 2, cy = h / 2
+                ctx.scale(overlay.fieldDownscale, overlay.fieldDownscale)
+                var w = overlay.width, h = overlay.height, cx = w / 2, cy = h / 2
                 var progress = overlay.progress01
                 var scatter = overlay.scatter01
                 var wave = overlay.wave01
@@ -413,8 +426,9 @@ Window {
                         var color = overlay.particleColors[overlay.pColorIdx[i] | 0]
                         // 水光拖尾：上一/两帧位置 → 当前位置，速度越快光带越长
                         var sx = P2X[i], sy = P2Y[i]
-                        var streakLen = Math.sqrt((x - sx) * (x - sx) + (y - sy) * (y - sy))
-                        if (streakLen > 0.6) {
+                        var streakLen = layer >= 1
+                                         ? Math.sqrt((x - sx) * (x - sx) + (y - sy) * (y - sy)) : 0
+                        if (layer >= 1 && streakLen > 0.6) {
                             ctx.globalAlpha = Math.min(0.55, alpha * (layer === 0 ? 0.30 : 0.46))
                             ctx.beginPath()
                             ctx.moveTo(sx, sy)
@@ -424,15 +438,21 @@ Window {
                             ctx.stroke()
                         }
                         if (layer === 0) {
-                            ctx.globalAlpha = Math.min(1, alpha * 0.55)
+                            // 远层只留极短光带 + 1px 头，成本最低
+                            ctx.globalAlpha = Math.min(1, alpha * 0.42)
                             ctx.fillStyle = color
-                            ctx.fillRect(x - sz * 0.35, y - sz * 0.35, Math.max(1, sz * 0.7), Math.max(1, sz * 0.7))
+                            ctx.fillRect(x - 0.5, y - 0.5, 1.2, 1.2)
+                        } else if (layer === 1) {
+                            // 中层：光带 + 小方点头
+                            ctx.globalAlpha = Math.min(1, alpha * 0.80)
+                            ctx.fillStyle = color
+                            ctx.fillRect(x - sz * 0.4, y - sz * 0.4,
+                                         Math.max(1.2, sz * 0.8), Math.max(1.2, sz * 0.8))
                         } else {
-                            if (layer === 2 || centerBoost > 0.18) {
-                                ctx.globalAlpha = Math.min(1, alpha * 0.20)
-                                ctx.beginPath(); ctx.arc(x, y, sz * 2.6, 0, twoPi)
-                                ctx.fillStyle = color; ctx.fill()
-                            }
+                            // 近层：光晕 + 内核 + 白心
+                            ctx.globalAlpha = Math.min(1, alpha * 0.20)
+                            ctx.beginPath(); ctx.arc(x, y, sz * 2.6, 0, twoPi)
+                            ctx.fillStyle = color; ctx.fill()
                             ctx.globalAlpha = Math.min(1, alpha * 0.92)
                             ctx.beginPath(); ctx.arc(x, y, sz, 0, twoPi)
                             ctx.fillStyle = color; ctx.fill()
@@ -452,20 +472,20 @@ Window {
                 if (glow > 0.001) {
                     ctx.globalCompositeOperation = "lighter"
                     var baseR = Math.max(10, Math.min(w, h) * 0.04 + Math.min(w, h) * 0.17 * glow)
-                    for (var g = 0; g < 5; g++) {
-                        ctx.globalAlpha = (0.03 + 0.035 * g) * glow
-                        ctx.beginPath(); ctx.arc(cx, cy, baseR * (0.4 + g * 0.2), 0, twoPi)
-                        ctx.fillStyle = g < 3 ? "#2ED3C6" : "#7FE7DA"; ctx.fill()
+                    for (var g = 0; g < 3; g++) {
+                        ctx.globalAlpha = (0.04 + 0.045 * g) * glow
+                        ctx.beginPath(); ctx.arc(cx, cy, baseR * (0.5 + g * 0.3), 0, twoPi)
+                        ctx.fillStyle = g < 2 ? "#2ED3C6" : "#7FE7DA"; ctx.fill()
                     }
                     ctx.globalAlpha = 1
                     ctx.globalCompositeOperation = "source-over"
                 }
 
                 // 中央文字可读性保护：淡淡的深色径向遮罩，压住中心粒子叠加亮度
-                var scrimR = Math.max(170, Math.min(w, h) * 0.17)
+                var scrimR = Math.max(190, Math.min(w, h) * 0.21)
                 var scrim = ctx.createRadialGradient(cx, cy, 0, cx, cy, scrimR)
-                scrim.addColorStop(0.0, "rgba(2, 8, 14, 0.72)")
-                scrim.addColorStop(0.55, "rgba(2, 8, 14, 0.42)")
+                scrim.addColorStop(0.0, "rgba(2, 8, 14, 0.56)")
+                scrim.addColorStop(0.48, "rgba(2, 8, 14, 0.30)")
                 scrim.addColorStop(1.0, "rgba(2, 8, 14, 0)")
                 ctx.globalCompositeOperation = "source-over"
                 ctx.globalAlpha = 1
