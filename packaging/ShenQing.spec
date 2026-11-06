@@ -24,8 +24,8 @@ datas = [
     (str(SRC / "shenqing" / "locales"), "locales"),
 ]
 datas += [
-    (str(ROOT / "LICENSE.txt"), "."),
-    (str(ROOT / "THIRD_PARTY_NOTICES.md"), "."),
+    (str(ROOT / "LICENSE"), "."),
+    (str(ROOT / "NOTICE"), "."),
     (str(ROOT / "CHANGELOG.md"), "."),
 ]
 datas += collect_data_files("RinUI")             # RinUI 的 QML 组件与字体

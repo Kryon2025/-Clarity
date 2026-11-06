@@ -93,7 +93,7 @@ class DockRevealControllerTest(unittest.TestCase):
 
 
 class DockRevealOverlayTest(unittest.TestCase):
-    """用离屏 QWindow 冒充 LockOverlay，验证 flags 的去掉/恢复。"""
+    """用离屏 QWindow 冒充 LockOverlay，验证 hide()/show() 行为。"""
 
     def setUp(self) -> None:
         self.overlay = QWindow()
@@ -105,31 +105,35 @@ class DockRevealOverlayTest(unittest.TestCase):
         self.overlay.close()
         self.overlay.deleteLater()
 
-    def test_reveal_demotes_and_restore_readds(self) -> None:
+    def test_hide_and_show_overlay(self) -> None:
         bridge = _FakeBridge(busy=True, level="medium", whitelist=["charmap.exe"])
         controller = DockRevealController(bridge)
         try:
-            self.assertTrue(self.overlay.flags() & Qt.WindowStaysOnTopHint)
-            controller.handle_app_launched("definitely-not-running-xyz.exe")
-            self.assertTrue(controller._revealed)
-            self.assertFalse(self.overlay.flags() & Qt.WindowStaysOnTopHint)
+            self.assertTrue(self.overlay.isVisible())
+            self.assertTrue(controller._hide_overlay())
+            self.assertFalse(self.overlay.isVisible())
+            self.assertTrue(controller._hidden)
+            self.assertTrue(controller._watch_timer.isActive())
             self.assertEqual(bridge.topmost_calls[-1], False)
-            controller.restore()
-            self.assertFalse(controller._revealed)
-            self.assertTrue(self.overlay.flags() & Qt.WindowStaysOnTopHint)
+            self.assertTrue(controller._show_overlay())
+            self.assertTrue(self.overlay.isVisible())
+            self.assertFalse(controller._hidden)
             self.assertEqual(bridge.topmost_calls[-1], True)
         finally:
             controller.restore()
 
-    def test_sync_session_restores_after_session_end(self) -> None:
+    def test_sync_session_stops_watch_after_session_end(self) -> None:
         bridge = _FakeBridge(busy=True, level="medium", whitelist=["charmap.exe"])
         controller = DockRevealController(bridge)
         try:
-            controller.handle_app_launched("definitely-not-running-xyz.exe")
-            self.assertFalse(self.overlay.flags() & Qt.WindowStaysOnTopHint)
+            controller.sync_session()
+            self.assertTrue(controller._watch_timer.isActive())
+            controller._hide_overlay()
+            self.assertTrue(controller._hidden)
             bridge.busy = False  # 会话结束
             controller.sync_session()
-            self.assertTrue(self.overlay.flags() & Qt.WindowStaysOnTopHint)
+            self.assertFalse(controller._hidden)
+            self.assertFalse(controller._watch_timer.isActive())
         finally:
             controller.restore()
 

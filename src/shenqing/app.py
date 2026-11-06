@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -13,10 +14,8 @@ from PySide6.QtCore import (
     QLockFile,
     QTimer,
     QtMsgType,
-    QUrl,
     qInstallMessageHandler,
 )
-from PySide6.QtQml import QQmlComponent
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from RinUI import RinUIWindow
@@ -26,10 +25,11 @@ from .bridge.app_bridge import AppBridge
 from .i18n import Translator
 from .consts import APP_ALIAS, APP_ID, APP_NAME, APP_VERSION
 from .paths import app_data_dir, qml_dir, qml_file
-from .services import elevation, keeper
+from .services import elevation, keeper, power, timesync
 from .services.dock_reveal import DockRevealController
 from .services.lock_hardening import restore_taskbars
 from .services.logging_setup import setup_logging
+from .services.quick_panel import QuickPanelController
 from .services.tray import TrayController, app_icon_path
 from .settings import Settings
 
@@ -161,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
     # 翻译必须在加载 QML 之前装好（QML 里的 qsTr 在加载时求值）
+    # 联网时间校准：后台线程，失败不影响启动（已缓存偏移兜底）
+    timesync.load_cache()
+    if not args.smoke:
+        threading.Thread(target=timesync.sync_now, name="shenqing-timesync", daemon=True).start()
+
     translator = Translator(app, str(settings.get("language", "auto")))
     bridge = AppBridge(translator=translator)
     window = RinUIWindow()  # 先建引擎，绑定上下文对象后再加载 QML
@@ -184,6 +189,9 @@ def main(argv: list[str] | None = None) -> int:
 
     bridge.themeChanged.connect(lambda name: window.setTheme(Theme(name)))
 
+    tray: TrayController | None = None
+    quick_panel: QuickPanelController | None = None
+
     def _retranslate(locale: str) -> None:
         engine = window.engine
         try:
@@ -192,51 +200,27 @@ def main(argv: list[str] | None = None) -> int:
                 retranslate()
         except Exception as exc:  # noqa: BLE001
             logging.warning("QML 重译失败：%s", exc)
-        tray_ref = panel_holder.get("tray")
-        if tray_ref is not None:
-            tray_ref.set_tooltip_text(APP_NAME)
+        if tray is not None:
+            tray.set_tooltip_text(APP_NAME)
 
     bridge.languageChanged.connect(_retranslate)
 
-    panel_holder: dict = {"panel": None}
-
     def hide_panel() -> None:
-        panel = panel_holder["panel"]
-        if panel is not None:
-            panel.setProperty("visible", False)
+        if quick_panel is not None:
+            quick_panel.hide()
 
-    def toggle_quick_panel() -> None:
-        panel = panel_holder["panel"]
-        if panel is None:
-            component = QQmlComponent(
-                window.engine, QUrl.fromLocalFile(str(qml_file("QuickPanel.qml")))
-            )
-            panel = component.create()
-            if component.isError() or panel is None:
-                logging.warning("速启面板加载失败：%s", component.errorString())
-                return
-            panel_holder["panel"] = panel
-        # 位置：托盘图标/光标附近；面板内部会做边界翻转
-        # 通过 requestTick 触发面板的 toggleAt(x, y)（幂等显示，不会把自己关掉）
-        from PySide6.QtGui import QCursor
+    def open_quick_panel() -> None:
+        """托盘右键：每次都要打开/重新定位；实在失败回退到系统托盘菜单。"""
+        ok = quick_panel.toggle() if quick_panel is not None else False
+        if not ok and tray is not None:
+            tray.show_menu()
 
-        rect = tray.tray_geometry() if tray is not None else None
-        if rect is not None:
-            anchor_x = rect.center().x()
-            anchor_y = rect.top()
-        else:
-            cursor = QCursor.pos()
-            anchor_x, anchor_y = cursor.x(), cursor.y()
-        panel.setProperty("requestX", anchor_x)
-        panel.setProperty("requestY", anchor_y)
-        panel.setProperty("requestTick", int(panel.property("requestTick") or 0) + 1)
-
-    tray: TrayController | None = None
     if not args.smoke:
         tray = TrayController(app)
+        quick_panel = QuickPanelController(window, tray, parent=app)
         tray.showRequested.connect(lambda: _show_window(window))
         tray.startRequested.connect(lambda: bridge.startLevel(bridge.lockLevel))
-        tray.quickPanelRequested.connect(toggle_quick_panel)
+        tray.quickPanelRequested.connect(open_quick_panel)
         tray.quitRequested.connect(app.quit)
         tray.show()
         # 速启面板里的「打开主界面 / 设置 / 退出」按钮
@@ -246,11 +230,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         bridge.quitRequested.connect(app.quit)
         bridge.toast.connect(lambda text: tray.message(APP_NAME, text))
+        # 速启面板里点空间/档位 → 打开主界面并切到空间页（不直接开始专注）
+        bridge.spacesPageRequested.connect(
+            lambda mode: (_show_window(window), _goto_spaces(window, mode), hide_panel())
+        )
         # 开始专注后自动收起速启面板
         bridge.stateChanged.connect(
-            lambda: panel_holder["panel"] is not None
-            and bridge.busy
-            and panel_holder["panel"].setProperty("visible", False)
+            lambda: quick_panel is not None and bridge.busy and quick_panel.hide()
         )
 
     if not args.smoke:
@@ -276,6 +262,7 @@ def main(argv: list[str] | None = None) -> int:
         logging.info("深清启动完成，数据目录：%s", app_data_dir())
 
     app.aboutToQuit.connect(bridge.overlayClosed)
+    app.aboutToQuit.connect(power.allow_sleep)
 
     code = app.exec()
     return int(code) if not args.smoke else (1 if _QML_PROBLEMS else 0)
@@ -286,6 +273,30 @@ def _goto_settings(window: RinUIWindow) -> None:
     root = window.root_window
     if root is not None:
         root.setProperty("navIndex", 3)
+
+
+def _goto_spaces(window: RinUIWindow, mode: str = "") -> None:
+    """速启面板点空间/档位：打开主界面并切到空间页对应标签。"""
+    root = window.root_window
+    if root is None:
+        return
+    try:
+        from PySide6.QtCore import Q_ARG, QMetaObject, Qt
+
+        item = {"kind": "space", "payload": {"mode": str(mode or "")}}
+        QMetaObject.invokeMethod(
+            root,
+            "handleSearchResult",
+            Qt.ConnectionType.DirectConnection,
+            Q_ARG("QVariant", item),
+        )
+    except Exception as exc:  # noqa: BLE001 - QML 接口缺失时退化为只切页
+        print(f"跳转空间页失败：{exc}", file=sys.stderr)
+    try:
+        root.setProperty("navIndex", 0)
+        root.setProperty("pendingSpaceMode", str(mode or ""))
+    except (RuntimeError, TypeError):
+        pass
 
 
 def _show_window(window: RinUIWindow) -> None:

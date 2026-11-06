@@ -37,6 +37,26 @@ def resource_root() -> Path:
     return Path(__file__).resolve().parent
 
 
+def project_root() -> Path:
+    """开发态仓库根目录（src 的上一级）。"""
+    return Path(__file__).resolve().parents[2]
+
+
+def _find_doc(name: str) -> Path:
+    for candidate in (resource_root() / name, project_root() / name):
+        if candidate.exists():
+            return candidate
+    return resource_root() / name
+
+
+def license_file() -> Path:
+    return _find_doc("LICENSE")
+
+
+def notice_file() -> Path:
+    return _find_doc("NOTICE")
+
+
 def qml_dir() -> Path:
     return resource_root() / "qml"
 

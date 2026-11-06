@@ -53,12 +53,15 @@ class StatsStore:
         space: str = "",
         *,
         when: datetime | None = None,
+        started_at: datetime | None = None,
     ) -> None:
         now = when or datetime.now()
+        start = started_at or now
         self._sessions.append(
             {
                 "date": now.date().isoformat(),
                 "ts": now.isoformat(timespec="seconds"),
+                "start": start.isoformat(timespec="seconds"),
                 "minutes": round(float(minutes), 1),
                 "level": level,
                 "completed": bool(completed),
@@ -77,11 +80,19 @@ class StatsStore:
         key = day.isoformat()
         return round(sum(float(s.get("minutes", 0)) for s in self._sessions if s.get("date") == key), 1)
 
-    def today_minutes(self) -> float:
-        return self.minutes_on(date.today())
+    def sessions_on(self, day: date | None = None) -> list[dict[str, Any]]:
+        key = (day or date.today()).isoformat()
+        return [dict(s) for s in self._sessions if s.get("date") == key]
 
-    def week_minutes(self) -> float:
-        today = date.today()
+    def today_sessions(self, today: date | None = None) -> int:
+        """今天完成的专注次数（供 UI 今日专注卡片/连续打卡）。"""
+        return len(self.sessions_on(today))
+
+    def today_minutes(self, today: date | None = None) -> float:
+        return self.minutes_on(today or date.today())
+
+    def week_minutes(self, today: date | None = None) -> float:
+        today = today or date.today()
         monday = today - timedelta(days=today.weekday())
         days = {monday + timedelta(days=i) for i in range(7)}
         return round(
@@ -92,10 +103,10 @@ class StatsStore:
     def total_sessions(self) -> int:
         return len(self._sessions)
 
-    def streak_days(self) -> int:
+    def streak_days(self, today: date | None = None) -> int:
         """连续专注天数（今天还没专注时从昨天往前算，保留昨天的成绩）。"""
         days = {s.get("date") for s in self._sessions if float(s.get("minutes", 0)) >= 1}
-        today = date.today()
+        today = today or date.today()
         cursor = today if today.isoformat() in days else today - timedelta(days=1)
         streak = 0
         while cursor.isoformat() in days:
@@ -103,9 +114,9 @@ class StatsStore:
             cursor -= timedelta(days=1)
         return streak
 
-    def last_7_days(self) -> list[dict[str, Any]]:
+    def last_7_days(self, today: date | None = None) -> list[dict[str, Any]]:
         """近 7 天（含今天）每天分钟数，供热图使用。"""
-        today = date.today()
+        today = today or date.today()
         result = []
         for offset in range(6, -1, -1):
             day = today - timedelta(days=offset)

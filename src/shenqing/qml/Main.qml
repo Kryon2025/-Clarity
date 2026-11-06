@@ -69,6 +69,13 @@ FluentWindow {
     // 页面切换动画开关（截图/低功耗场景可关闭，动画依赖渲染帧，被系统节流时会停在过渡态）
     property bool pageTransitions: true
 
+    // ---------- 专注结束「今日专注卡片」状态 ----------
+    property bool sessionWasLocked: false
+    property string summarySpaceName: ""
+    property string summaryLevel: ""
+    property double summaryStartMs: 0
+    property int summaryPlannedSeconds: 0
+
     // ================= 玻璃导航拖拽状态 =================
     property bool navDragActive: false
     property real navDragY: 0
@@ -298,6 +305,58 @@ FluentWindow {
         if (kind === "plugin") return "grid"
         if (kind === "action") return "gear"
         return "dot"
+    }
+
+    // 专注结束：记录会话信息并弹出今日专注卡片
+    function checkFocusSession() {
+        var locked = (typeof App !== "undefined" && App.locked === true)
+        if (locked && !win.sessionWasLocked) {
+            win.sessionWasLocked = true
+            win.summarySpaceName = (typeof App.activeSpaceName !== "undefined") ? String(App.activeSpaceName) : ""
+            win.summaryLevel = (typeof App.sessionLevel !== "undefined") ? String(App.sessionLevel) : ""
+            win.summaryStartMs = Date.now()
+            win.summaryPlannedSeconds = (typeof App.totalSeconds !== "undefined") ? Number(App.totalSeconds) : 0
+        } else if (!locked && win.sessionWasLocked) {
+            win.sessionWasLocked = false
+            if (typeof App.previewActive !== "undefined" && App.previewActive === true) return
+            var info = (typeof App.lastSession !== "undefined" && App.lastSession !== null) ? App.lastSession : null
+            var endMs = Date.now()
+            var minutes = 1
+            if (win.summaryStartMs > 0)
+                minutes = Math.max(1, Math.round((endMs - win.summaryStartMs) / 60000))
+            else if (win.summaryPlannedSeconds > 0)
+                minutes = Math.max(1, Math.round(win.summaryPlannedSeconds / 60))
+            var data = {
+                spaceName: win.summarySpaceName,
+                level: win.summaryLevel,
+                minutes: minutes,
+                startMs: win.summaryStartMs > 0 ? win.summaryStartMs : endMs - minutes * 60000,
+                endMs: endMs,
+                quote: (typeof App.dailyQuote !== "undefined" && App.dailyQuote !== null) ? String(App.dailyQuote) : "",
+                avatarUrl: (typeof App.userAvatarUrl !== "undefined" && App.userAvatarUrl !== null) ? String(App.userAvatarUrl) : "",
+                wallpaperUrl: (typeof App.bingWallpaperUrl !== "undefined" && App.bingWallpaperUrl !== null) ? String(App.bingWallpaperUrl) : ""
+            }
+            var card = (typeof App.todayFocusCard !== "undefined" && App.todayFocusCard !== null)
+                       ? App.todayFocusCard : null
+            if (card !== null) {
+                if (card.spaceName !== undefined && String(card.spaceName) !== "")
+                    data.spaceName = String(card.spaceName)
+                if (card.quote !== undefined) data.quote = String(card.quote)
+                if (card.date !== undefined && card.timeRange !== undefined)
+                    data.dateText = String(card.date) + " " + String(card.timeRange)
+            }
+            if (info !== null) {
+                if (info.spaceName !== undefined) data.spaceName = String(info.spaceName)
+                if (info.level !== undefined) data.level = String(info.level)
+                if (info.minutes !== undefined) data.minutes = Math.max(1, Math.round(Number(info.minutes)))
+                if (info.startMs !== undefined) data.startMs = Number(info.startMs)
+                if (info.endMs !== undefined) data.endMs = Number(info.endMs)
+                if (info.quote !== undefined) data.quote = String(info.quote)
+                if (info.avatarUrl !== undefined) data.avatarUrl = String(info.avatarUrl)
+                if (info.wallpaperUrl !== undefined) data.wallpaperUrl = String(info.wallpaperUrl)
+            }
+            focusSummary.showSummary(data)
+        }
     }
 
     // ================= 浮层控制 =================
@@ -871,6 +930,7 @@ FluentWindow {
                     SettingsPage {
                         anchors.fill: parent
                         glassSource: win.glassSource
+                        onOnboardingRequested: onboarding.showPages()
                     }
                 }
 
@@ -1248,13 +1308,30 @@ FluentWindow {
         }
     }
 
+    // ---------- 新手引导（首次启动 / 设置页手动打开） ----------
+    Onboarding {
+        id: onboarding
+        animationsEnabled: win.pageTransitions
+    }
+
     // ---------- 进入专注前的 10 秒倒计时（水滴凝聚） ----------
     EnterCountdown {
+        animationsEnabled: win.pageTransitions
+    }
+
+    // ---------- 专注结束「今日专注卡片」 ----------
+    FocusSummary {
+        id: focusSummary
         animationsEnabled: win.pageTransitions
     }
 
     // ---------- 重度锁机全屏遮罩 ----------
     LockOverlay {
         animationsEnabled: win.pageTransitions
+    }
+
+    Connections {
+        target: (typeof App !== "undefined") ? App : null
+        function onLockedChanged() { win.checkFocusSession() }
     }
 }

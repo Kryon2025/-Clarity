@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.7.0"
+APP_VERSION = "0.8.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,37 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.8.0",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "进入前动画升级：1000+ 透明水光点汇聚成发光圆圈，结束时光点展开为今日专注卡片",
+            "今日专注卡片：Bing 每日壁纸背景、Windows 账户头像、分享 / 保存 / 延长 20 分钟",
+            "新用户引导：欢迎、三档空间、主题、插件、完成",
+            "数据页 Patina 风格：今日时长/会话、连续打卡、最近 7 天与最近会话",
+            "覆清白名单应用可见：白名单应用前台时遮罩自动隐藏，任务栏全程隐藏",
+            "睡眠模式「还清」：多段锁定时间、提前提醒、每月解锁次数、点击时钟 10 次解锁",
+            "dock 设置面板：系统音量、关机 / 重启（二次确认）",
+            "联网校时 + 专注期间禁止熄屏/休眠；托盘右键面板、速启空间项修复",
+            "法语 / 日语界面，GitHub Actions 可用 AI 机器人自动翻译",
+            "许可证改为 GPL-3.0-only，新增 NOTICE 列出第三方组件与素材资源",
+            "移除 CW2 组件插件，全屏组件改为左时钟 / 右自定义区域（时钟、每日一言、倒数日等）",
+        ],
+        "items_en": [
+            "New entry animation: 1000+ transparent light points converge into a glowing ring; at the end they expand into a focus summary card",
+            "Focus summary card: Bing daily wallpaper, Windows avatar, share / save / extend 20 minutes",
+            "New-user onboarding: welcome, tiers, themes, plugins, finish",
+            "Patina-style stats page: today duration/sessions, streak, last 7 days and recent sessions",
+            "Allowed apps stay visible in Veil: the overlay hides while an allowlisted app is focused; the taskbar stays hidden",
+            "Sleep mode (Huanqing): multiple lock times, advance reminders, monthly unlock chances, unlock by clicking the clock 10 times",
+            "Dock settings panel: system volume, shutdown / restart with confirmation",
+            "Network time sync and no display sleep during focus; tray right-click and quick-panel space entry fixes",
+            "Japanese / French UI with AI-assisted translation via GitHub Actions",
+            "License changed to GPL-3.0-only with a NOTICE file listing third-party components and resources",
+            "Removed the CW2 widget plugin; the overlay now has a clock on the left and custom widgets on the right (clock, daily quote, countdown and more)",
+        ],
+    },
     {
         "version": "0.7.0",
         "date": "2025-11-05",
@@ -235,3 +266,30 @@ LOCK_LEVEL_CHOICES = [
 STATE_IDLE = "idle"
 STATE_RUNNING = "running"
 STATE_PAUSED = "paused"
+
+#: 睡眠模式：每月可用的提前解锁次数
+SLEEP_UNLOCK_CHANCES = 3
+
+#: 睡眠模式提醒（提前分钟数）
+SLEEP_REMINDER_MINUTES = (60, 30, 1)
+
+#: 结束卡片随机文案（按日期轮换）
+QUOTES = (
+    "把注意力放回眼前这一件事。",
+    "安静地做，时间会替你记账。",
+    "慢一点，也是在向前。",
+    "专注不是用力，而是不分心。",
+    "先完成，再完美。",
+    "今天的一小步，是明天的底气。",
+    "屏幕之外，还有生活。",
+    "你已经比昨天的自己更专注了一点。",
+)
+
+
+def quote_for(day) -> str:  # noqa: ANN001
+    """按日期轮换一条结束卡片文案。"""
+    try:
+        index = int(getattr(day, "toordinal", lambda: 0)()) % len(QUOTES)
+    except (TypeError, ValueError):
+        index = 0
+    return QUOTES[index]

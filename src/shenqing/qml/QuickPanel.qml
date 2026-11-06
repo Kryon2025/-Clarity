@@ -180,6 +180,15 @@ Window {
         return String(value)
     }
 
+    // v0.8：速启面板的空间/档位点击 → 打开主窗口空间页并切到对应标签
+    function openSpaces(value) {
+        if (typeof App !== "undefined" && typeof App.openSpacesPage === "function")
+            App.openSpacesPage(String(value || ""))
+        else if (typeof App.startMode === "function")
+            App.startMode(String(value))
+        panel.hide()
+    }
+
     function startMode(value) {
         if (typeof App.startMode === "function")
             App.startMode(String(value))
@@ -483,7 +492,7 @@ Window {
                         onPositionChanged: (mouse) => {
                             if (pressed) modeCell.trackPointer(mouse.x, mouse.y)
                         }
-                        onClicked: panel.startMode(String(modelData.value))
+                        onClicked: panel.openSpaces(String(modelData.value))
                     }
                 }
             }
@@ -606,7 +615,7 @@ Window {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: panel.startMode(panel.defaultModeValue)
+                onClicked: panel.openSpaces(panel.defaultModeValue)
             }
         }
 

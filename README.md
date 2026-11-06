@@ -17,7 +17,7 @@
 [![星标](https://img.shields.io/github/stars/Kryon2025/Clarity?style=for-the-badge&color=orange&label=%E6%98%9F%E6%A0%87)](https://github.com/Kryon2025/Clarity)
 [![当前版本](https://img.shields.io/github/v/release/Kryon2025/Clarity?style=for-the-badge&color=purple&label=%E5%BD%93%E5%89%8D%E7%89%88%E6%9C%AC)](https://github.com/Kryon2025/Clarity/releases/latest)
 [![下载量](https://img.shields.io/github/downloads/Kryon2025/Clarity/total.svg?label=%E4%B8%8B%E8%BD%BD%E9%87%8F&color=green&style=for-the-badge)](https://github.com/Kryon2025/Clarity/releases)
-[![许可](https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF-%E4%B8%93%E6%9C%89-red?style=for-the-badge)](./LICENSE.txt)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge&label=%E8%AE%B8%E5%8F%AF)](./LICENSE)
 [![平台](https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://github.com/Kryon2025/Clarity/releases)
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 
@@ -43,7 +43,7 @@
 - **保活**：独立看门狗监控主进程，被杀约 2 秒自动拉起；新安装默认最高权限运行并登记最高权限开机自启；
 - **不杀进程**：默认把干扰应用的窗口藏起来 + 静音，保留未保存的工作；
 - **插件系统**：目录即装，插件可注册导航入口与全屏遮罩组件；内置「番茄同步」（番茄ToDo 数据互通）与默认停用的「CW2 全屏组件」；
-- **国际化**：简体中文 / English，GitHub Actions 自动抽取并编译翻译。
+- **国际化**：简体中文 / English / 日本語 / Français，GitHub Actions 自动抽取，并可用 AI 机器人自动翻译缺漏条目。
 
 ## 软件截图
 
@@ -73,7 +73,7 @@
 - 专注中按 **Ctrl+K** 全局搜索；深清档不可提前结束；
 - 关闭主窗口只会收进托盘，真正退出请用托盘菜单「退出深清」或速启面板；
 - 数据保存在 `%APPDATA%\ShenQing\`（空间、设置、插件、专注统计），不上传云端；
-- 许可证：[LICENSE.txt](./LICENSE.txt)；第三方组件：[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+- 许可证：[LICENSE](./LICENSE)（GPL-3.0）；第三方组件与素材资源：[NOTICE](./NOTICE)。
 
 ## 更新日志
 
@@ -115,8 +115,8 @@ Compress-Archive -Path "dist/深清/*" -DestinationPath "dist/ShenQing-Portable-
 
 ## 协议
 
-本项目（深清 / Clarity）为**专有软件（Proprietary）**，保留所有权利，详情见 [LICENSE.txt](./LICENSE.txt)。
-第三方开源组件按各自许可证授权，详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+本项目（深清 / Clarity）以 **GNU General Public License v3.0（GPL-3.0-only）** 授权发布，详情见 [LICENSE](./LICENSE)。
+第三方开源组件、素材与设计参考的许可证与说明见 [NOTICE](./NOTICE)。
 
 Copyright © 2025 Kryon.
 

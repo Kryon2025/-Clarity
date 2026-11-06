@@ -23,6 +23,8 @@ logger = logging.getLogger("shenqing.i18n")
 LOCALES: list[dict] = [
     {"code": "zh_CN", "label": "简体中文", "english": "Simplified Chinese"},
     {"code": "en_US", "label": "English", "english": "English"},
+    {"code": "ja_JP", "label": "日本語", "english": "Japanese"},
+    {"code": "fr_FR", "label": "Français", "english": "French"},
 ]
 
 DEFAULT_LOCALE = "zh_CN"
@@ -39,9 +41,13 @@ def supported_codes() -> list[str]:
 
 def system_locale() -> str:
     """系统语言 → 我们支持的 code（目前中/英两种，其余回落到英文）。"""
-    name = QLocale.system().name()
-    if name.lower().startswith("zh"):
+    name = QLocale.system().name().lower()
+    if name.startswith("zh"):
         return "zh_CN"
+    if name.startswith("ja"):
+        return "ja_JP"
+    if name.startswith("fr"):
+        return "fr_FR"
     return "en_US"
 
 

@@ -1,16 +1,12 @@
-"""覆清（medium）专注中，把 dock 启动的白名单应用显示到全屏遮罩之上（v0.6）。
+"""覆清（medium）dock 应用显示控制（v0.8）。
 
-背景：LockOverlay 是 always-on-top 全屏遮罩，白名单应用启动后窗口在遮罩下面，用户看不到。
+需求：白名单应用在前台时，直接 hide() 全屏遮罩（会话与计时继续），
+让应用完全可见；前台切回非白名单/桌面后 300ms 内 show() 遮罩并恢复置顶；
+2 秒防抖避免 Alt+Tab 闪烁。任务栏由防退出加固保持隐藏，本模块不碰。
 
-做法（不重建窗口、不改 QML）：
-1. bridge.launchApp 成功后发 appLaunched(exe)；
-2. 本控制器临时去掉遮罩原生窗口的 WS_EX_TOPMOST（仍保持可见/全屏，不退出专注、计时照常）；
-3. 轮询找到该 exe 的顶层窗口并 SetForegroundWindow 激活它；
-4. 之后每秒检查前台窗口：仍属于当前空间白名单 → 保持遮罩非置顶；否则把遮罩重新置顶；
-5. 会话结束/退出 → 恢复遮罩置顶、停止轮询。
-
-只对 medium 生效（heavy 没有 dock，light 也没有 dock）。
-非 Windows 环境全部安全降级为空操作。
+- bridge.appLaunched → 激活应用窗口 → hide 遮罩；
+- 300ms 轮询前台进程：属于当前空间白名单 → 保持隐藏；否则防抖 2s 后恢复；
+- 会话结束/退出 → 停止轮询并恢复遮罩状态（会话已结束时不再强行 show）。
 """
 
 from __future__ import annotations
@@ -22,7 +18,7 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QTimer
+from PySide6.QtCore import QObject, QTimer
 
 logger = logging.getLogger("shenqing.dock_reveal")
 
@@ -36,7 +32,8 @@ PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 OVERLAY_OBJECT_NAME = "LockOverlay"
 ACTIVATE_POLL_MS = 200
 ACTIVATE_MAX_ATTEMPTS = 50  # 约 10s 等应用主窗口出现
-#: 激活后的宽限期：期间即使前台被本程序窗口短暂抢走，也再次激活白名单应用
+WATCH_INTERVAL_MS = 300
+SHOW_DEBOUNCE_SECONDS = 2.0
 FOCUS_GRACE_SECONDS = 8.0
 
 _WIN = os.name == "nt"
@@ -86,11 +83,9 @@ if _WIN:
     ]
     _kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     _HWND_TOPMOST = wintypes.HWND(-1)
-    _HWND_NOTOPMOST = wintypes.HWND(-2)
 
 
 def exe_basename(exe: object) -> str:
-    """'C:\\Windows\\notepad.exe' / 'notepad.exe' → 'notepad.exe'（小写）。"""
     text = str(exe or "").strip().strip('"')
     if not text:
         return ""
@@ -132,7 +127,6 @@ def foreground_exe() -> str:
 
 
 def window_ids_for_exe(exe: object) -> list[int]:
-    """返回该 exe 的可见顶层窗口（按 Z 序，最上层在前）。"""
     target = exe_basename(exe)
     if not _WIN or not target:
         return []
@@ -147,7 +141,7 @@ def window_ids_for_exe(exe: object) -> list[int]:
 
     try:
         _user32.EnumWindows(_WNDENUMPROC(_callback), 0)
-    except (OSError, ValueError):  # pragma: no cover - 极端环境
+    except (OSError, ValueError):  # pragma: no cover
         return []
     return found
 
@@ -169,24 +163,17 @@ def is_topmost(hwnd: int) -> bool:
 
 
 def set_topmost(hwnd: int, enabled: bool) -> bool:
-    """直接改原生窗口的置顶属性（不重建窗口、不打断 QML 遮罩）。"""
     if not _WIN or not hwnd:
         return False
-    insert_after = _HWND_TOPMOST if enabled else _HWND_NOTOPMOST
-    ok = _user32.SetWindowPos(
-        int(hwnd),
-        insert_after,
-        0,
-        0,
-        0,
-        0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+    insert_after = _HWND_TOPMOST if enabled else wintypes.HWND(-2)
+    return bool(
+        _user32.SetWindowPos(
+            int(hwnd), insert_after, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
+        )
     )
-    return bool(ok)
 
 
 def activate_window(hwnd: int) -> bool:
-    """恢复并激活目标窗口；必要时附加前台线程输入队列绕过前台锁。"""
     if not _WIN or not hwnd:
         return False
     try:
@@ -210,20 +197,20 @@ def activate_window(hwnd: int) -> bool:
 
 
 class DockRevealController(QObject):
-    """监听 appLaunched / 会话状态，把覆清白名单应用显示到遮罩之上。"""
+    """覆清 dock：白名单应用在前台时隐藏遮罩，切走 2s 后恢复。"""
 
     def __init__(self, bridge, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         self._overlay = None
+        self._hidden = False
+        self._last_whitelist_at = 0.0
         self._pending_exe = ""
         self._activate_attempts = 0
-        self._revealed = False
-        self._saved_flags = None
         self._app_hwnd = 0
         self._activated_at = 0.0
         self._watch_timer = QTimer(self)
-        self._watch_timer.setInterval(1000)
+        self._watch_timer.setInterval(WATCH_INTERVAL_MS)
         self._watch_timer.timeout.connect(self._on_watch_tick)
         self._activate_timer = QTimer(self)
         self._activate_timer.setInterval(ACTIVATE_POLL_MS)
@@ -232,10 +219,7 @@ class DockRevealController(QObject):
     # ---------- 判定 ----------
     def _eligible(self) -> bool:
         try:
-            return (
-                bool(self._bridge.busy)
-                and str(self._bridge.sessionLevel) == "medium"
-            )
+            return bool(self._bridge.busy) and str(self._bridge.sessionLevel) == "medium"
         except (RuntimeError, AttributeError):
             return False
 
@@ -249,10 +233,7 @@ class DockRevealController(QObject):
     def _overlay_window(self):  # noqa: ANN202
         if self._overlay is not None:
             try:
-                if (
-                    self._overlay.objectName() == OVERLAY_OBJECT_NAME
-                    and self._overlay.isVisible()
-                ):
+                if self._overlay.objectName() == OVERLAY_OBJECT_NAME:
                     return self._overlay
             except RuntimeError:
                 pass
@@ -277,11 +258,10 @@ class DockRevealController(QObject):
                     fallback = window
             self._overlay = fallback
             return fallback
-        except Exception:  # noqa: BLE001 - 找不到遮罩就降级
+        except Exception:  # noqa: BLE001
             return None
 
     def _set_hardening_topmost(self, enabled: bool) -> None:
-        """暂停/恢复「防退出加固」里每 500ms 把遮罩拉回最前的定时器。"""
         try:
             setter = getattr(self._bridge, "setOverlayTopmostEnabled", None)
             if callable(setter):
@@ -289,100 +269,54 @@ class DockRevealController(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.warning("切换防退出加固置顶失败：%s", exc)
 
-    def _demote_overlay(self) -> bool:
-        """去掉遮罩的 WindowStaysOnTopHint（通过 QML flags 属性，窗口不重建）。"""
+    def _hide_overlay(self) -> bool:
         window = self._overlay_window()
-        if window is None:
+        if window is None or self._hidden:
             return False
-        self._set_hardening_topmost(False)
         try:
-            flags = window.flags()
-            if self._saved_flags is None:
-                self._saved_flags = flags
-            if not (flags & Qt.WindowStaysOnTopHint):
-                return True
-            window.setProperty("flags", int(flags & ~int(Qt.WindowStaysOnTopHint)))
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(
-                    "覆清 dock：降低遮罩 flags hwnd=%s before=%s after=%s vis=%s",
-                    overlay_hwnd(window),
-                    int(flags),
-                    int(window.flags()),
-                    window.isVisible(),
-                )
+            self._set_hardening_topmost(False)
+            window.hide()
+            self._hidden = True
+            if not self._watch_timer.isActive():
+                self._watch_timer.start()
+            logger.info("覆清 dock：白名单应用在前台，隐藏遮罩（计时继续）")
             return True
-        except (RuntimeError, ValueError, TypeError) as exc:
-            logger.warning("取消遮罩置顶失败：%s", exc)
+        except (RuntimeError, TypeError) as exc:
+            logger.warning("隐藏遮罩失败：%s", exc)
             return False
 
-    def _restore_overlay_flags(self) -> None:
-        """把遮罩恢复成原来的 always-on-top flags（隐藏状态下也不强制 show）。"""
+    def _show_overlay(self) -> bool:
         window = self._overlay_window()
         if window is None:
-            return
+            return False
         try:
-            flags = window.flags()
-            target = (
-                self._saved_flags
-                if self._saved_flags is not None
-                else flags | Qt.WindowStaysOnTopHint
-            )
-            if not (flags & Qt.WindowStaysOnTopHint):
-                window.setProperty("flags", int(target))
+            window.showFullScreen()
+            hwnd = overlay_hwnd(window)
+            if hwnd:
+                set_topmost(hwnd, True)
             self._set_hardening_topmost(True)
-        except (RuntimeError, ValueError, TypeError) as exc:
-            logger.warning("恢复遮罩置顶失败：%s", exc)
-
-    def _ensure_topmost(self) -> None:
-        if not self._revealed:
-            self._restore_overlay_flags()
-
-    def _enforce_demoted(self) -> None:
-        """白名单应用在前台时，确保遮罩既没有 flags 也没有原生 WS_EX_TOPMOST。
-
-        Windows/Qt 在应用启动、切换前台时可能把置顶重新加回来，这里做兜底。
-        """
-        window = self._overlay_window()
-        if window is None:
-            return
-        self._set_hardening_topmost(False)
-        try:
-            if window.flags() & Qt.WindowStaysOnTopHint:
-                self._demote_overlay()
-        except RuntimeError:
-            return
-        hwnd = overlay_hwnd(window)
-        if hwnd and is_topmost(hwnd):
-            set_topmost(hwnd, False)
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug("覆清 dock：强制取消原生置顶 hwnd=%s", hwnd)
-
-    def _reveal(self) -> bool:
-        if not self._demote_overlay():
-            logger.info("覆清 dock：没找到遮罩窗口，跳过置顶切换")
+            self._hidden = False
+            logger.info("覆清 dock：前台不是白名单应用，恢复遮罩")
+            return True
+        except (RuntimeError, TypeError) as exc:
+            logger.warning("恢复遮罩失败：%s", exc)
             return False
-        self._revealed = True
-        if not self._watch_timer.isActive():
-            self._watch_timer.start()
-        logger.info("覆清 dock：临时取消遮罩置顶，让白名单应用显示")
-        return True
-
-    def _raise_overlay(self) -> None:
-        self._watch_timer.stop()
-        self._restore_overlay_flags()
-        self._revealed = False
-        logger.info("覆清 dock：前台不是白名单应用，遮罩重新置顶")
 
     def restore(self) -> None:
-        """恢复遮罩置顶并停止所有轮询（会话结束 / 退出时调用）。"""
+        """会话结束/退出：停止轮询；会话仍在中却不再适用时把遮罩放回来。"""
         try:
             self._watch_timer.stop()
             self._activate_timer.stop()
-            self._restore_overlay_flags()
-            self._revealed = False
-            self._saved_flags = None
-        except Exception as exc:  # noqa: BLE001 - 恢复失败不能影响退出
-            logger.warning("恢复遮罩置顶失败：%s", exc)
+            if self._hidden:
+                if self._eligible():
+                    self._show_overlay()
+                else:
+                    self._hidden = False
+                    self._set_hardening_topmost(True)
+            else:
+                self._set_hardening_topmost(True)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("恢复遮罩状态失败：%s", exc)
 
     # ---------- 应用激活 ----------
     def _start_activate(self, exe: object) -> None:
@@ -393,7 +327,7 @@ class DockRevealController(QObject):
         if self._pending_exe:
             self._activate_timer.start()
         else:
-            self._raise_overlay()
+            self._hide_overlay()
 
     def _on_activate_tick(self) -> None:
         if not self._eligible():
@@ -403,71 +337,67 @@ class DockRevealController(QObject):
         self._activate_attempts += 1
         windows = window_ids_for_exe(self._pending_exe)
         if windows:
-            if activate_window(windows[0]):
-                logger.info("覆清 dock：已激活 %s 的窗口", self._pending_exe)
-                self._app_hwnd = int(windows[0])
-                self._activated_at = time.monotonic()
-                # 应用激活后 Qt/Windows 可能把遮罩置顶加回来，立刻再降一次
-                self._enforce_demoted()
+            activate_window(windows[0])
+            self._app_hwnd = int(windows[0])
+            self._activated_at = time.monotonic()
+            self._hide_overlay()
             self._activate_timer.stop()
             return
         if self._activate_attempts >= ACTIVATE_MAX_ATTEMPTS:
             logger.info("覆清 dock：没等到 %s 的窗口，恢复遮罩", self._pending_exe)
             self._activate_timer.stop()
-            self._raise_overlay()
+            self._show_overlay()
 
     def _on_watch_tick(self) -> None:
         if not self._eligible():
             self.restore()
             return
         if self._activate_timer.isActive():
-            # 应用还在启动/激活中（窗口可能 1-3s 才出来），这期间不要抢回置顶，
-            # 否则会把刚拉起的应用再次压到遮罩下面。
             return
         current = foreground_exe()
         whitelist = self._whitelist()
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
-                "dock 轮询：前台=%s 白名单=%s 置顶=%s",
-                current,
-                sorted(whitelist),
-                is_topmost(overlay_hwnd(self._overlay_window())),
-            )
+        now = time.monotonic()
         if current and current in whitelist:
-            # 应用在前台：若置顶被系统/Qt 加回来，重新降下去（每次 tick 兜底）
-            self._enforce_demoted()
+            self._last_whitelist_at = now
+            if not self._hidden:
+                self._hide_overlay()
             return
-        own_names = {exe_basename(sys.executable), "python.exe", "pythonw.exe", "shenqing.exe"}
-        in_grace = (
-            self._app_hwnd
-            and time.monotonic() - self._activated_at < FOCUS_GRACE_SECONDS
-        )
-        if current in own_names and in_grace:
-            # 刚拉起应用时本程序窗口偶尔会抢回前台，把白名单应用再激活一次，
-            # 不要把遮罩重新置顶（否则应用又被盖住）。
+        own_names = {
+            exe_basename(sys.executable),
+            "python.exe",
+            "pythonw.exe",
+            "shenqing.exe",
+        }
+        if (
+            current in own_names
+            and self._app_hwnd
+            and now - self._activated_at < FOCUS_GRACE_SECONDS
+        ):
             if activate_window(self._app_hwnd):
-                self._enforce_demoted()
+                self._hide_overlay()
             return
-        # 用户切回遮罩/桌面/其他应用：遮罩重新置顶
-        self._raise_overlay()
+        if not self._hidden:
+            return
+        # 切走 2 秒防抖：只有持续不在白名单应用上才把遮罩放回来
+        if now - self._last_whitelist_at < SHOW_DEBOUNCE_SECONDS:
+            return
+        self._show_overlay()
 
     # ---------- 对外槽 ----------
     def handle_app_launched(self, exe: str) -> None:
         try:
             if not self._eligible():
                 return
-            if not self._reveal():
-                return
             self._start_activate(exe)
-        except Exception as exc:  # noqa: BLE001 - 不能让 dock 点击崩掉
+        except Exception as exc:  # noqa: BLE001
             logger.warning("覆清 dock 显示应用失败：%s", exc)
 
     def sync_session(self) -> None:
-        """桥的 stateChanged/lockedChanged 调用：会话结束恢复遮罩；会话中确保置顶。"""
         try:
             if self._eligible():
-                self._ensure_topmost()
-            else:
-                self.restore()
+                if not self._watch_timer.isActive():
+                    self._watch_timer.start()
+                return
+            self.restore()
         except Exception as exc:  # noqa: BLE001
             logger.warning("同步会话状态失败：%s", exc)

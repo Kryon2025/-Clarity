@@ -168,6 +168,43 @@ Item {
             App.openFeedback(String(kind))
     }
 
+    // ---------- 许可证 / 第三方组件：应用内弹窗 ----------
+    property string docDialog: ""          // "" | "license" | "notice"
+    property bool docDialogVisible: false
+    property bool docCopied: false
+    readonly property string licenseText: (typeof App !== "undefined" && App.licenseText !== undefined)
+                                           ? String(App.licenseText) : qsTr("文本不可用")
+    readonly property string noticeText: (typeof App !== "undefined" && App.noticeText !== undefined)
+                                          ? String(App.noticeText) : qsTr("文本不可用")
+    function docTitle() {
+        return page.docDialog === "license" ? qsTr("许可证") : qsTr("第三方组件与素材")
+    }
+    function docText() {
+        return page.docDialog === "license" ? page.licenseText : page.noticeText
+    }
+    function openDocDialog(kind) {
+        page.docDialog = String(kind)
+        page.docDialogVisible = true
+        page.docCopied = false
+        docOverlay.forceActiveFocus()
+    }
+    function closeDocDialog() {
+        page.docDialogVisible = false
+    }
+    function copyDocText() {
+        docClipHelper.text = page.docText()
+        docClipHelper.selectAll()
+        docClipHelper.copy()
+        page.docCopied = true
+        docCopyTimer.restart()
+    }
+    Timer {
+        id: docCopyTimer
+        interval: 1600
+        repeat: false
+        onTriggered: page.docCopied = false
+    }
+
     // ---------- 下方信息分区 ----------
     readonly property var sections: [
         {
@@ -363,16 +400,16 @@ Item {
                             fontSize: 13
                             padH: 18
                             minHeight: 36
-                            onClicked: Qt.openUrlExternally(page.licenseUrl)
+                            onClicked: page.openDocDialog("license")
                         }
 
                         GlassButton {
-                            text: qsTr("第三方组件")
+                            text: qsTr("第三方组件与素材")
                             tone: "ghost"
                             fontSize: 13
                             padH: 18
                             minHeight: 36
-                            onClicked: Qt.openUrlExternally(page.noticesUrl)
+                            onClicked: page.openDocDialog("notice")
                         }
                     }
 
@@ -1119,6 +1156,178 @@ Item {
 
             Item { width: parent.width; height: 2 }
         }
+    }
+
+    // ================= 许可证 / 第三方组件 应用内弹窗 =================
+    Item {
+        id: docOverlay
+        objectName: "LicenseDialog"
+        anchors.fill: parent
+        z: 80
+        visible: opacity > 0.01
+        opacity: page.docDialogVisible ? 1 : 0
+        focus: visible
+        Keys.onEscapePressed: page.closeDocDialog()
+
+        Behavior on opacity {
+            enabled: page.animationsEnabled !== false
+            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#B3040A10"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onClicked: page.closeDocDialog()
+        }
+
+        Rectangle {
+            id: docDialog
+            objectName: "DocDialog"
+            width: Math.min(760, page.width * 0.68)
+            height: Math.min(560, page.height * 0.72)
+            anchors.centerIn: parent
+            radius: 22
+            color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+            border.width: 1
+            border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
+            scale: page.docDialogVisible ? 1 : 0.98
+
+            Behavior on scale {
+                enabled: page.animationsEnabled !== false
+                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+            }
+
+            // 吃掉对话框内点击，避免误触关闭
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                onClicked: {}
+            }
+
+            Text {
+                id: docTitleText
+                x: 22
+                y: 20
+                width: parent.width - 80
+                text: page.docTitle()
+                color: AppTheme.textPrimary
+                font.pixelSize: 17
+                font.weight: Font.DemiBold
+                font.family: C.numFont
+                elide: Text.ElideRight
+            }
+
+            Item {
+                id: docCloseButton
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.rightMargin: 14
+                anchors.topMargin: 12
+                width: 30
+                height: 30
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 15
+                    color: docCloseArea.containsMouse
+                           ? (AppTheme.glass ? "#33FFFFFF" : AppTheme.buttonBgAlt)
+                           : "transparent"
+                }
+                Glyph {
+                    anchors.centerIn: parent
+                    kind: "close"
+                    size: 12
+                    color: docCloseArea.containsMouse ? AppTheme.textPrimary : AppTheme.textTertiary
+                }
+                MouseArea {
+                    id: docCloseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: page.closeDocDialog()
+                }
+            }
+
+            Rectangle {
+                x: 22
+                y: 56
+                width: parent.width - 44
+                height: 1
+                color: AppTheme.divider
+            }
+
+            Flickable {
+                id: docFlick
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: 22
+                anchors.rightMargin: 22
+                anchors.topMargin: 68
+                anchors.bottom: docButtons.top
+                anchors.bottomMargin: 12
+                contentWidth: width
+                contentHeight: docTextEdit.contentHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.VerticalFlick
+
+                TextEdit {
+                    id: docTextEdit
+                    width: parent.width
+                    text: page.docText()
+                    readOnly: true
+                    textFormat: TextEdit.PlainText
+                    wrapMode: TextEdit.Wrap
+                    color: AppTheme.textSecondary
+                    selectionColor: AppTheme.accentSoft
+                    selectedTextColor: "#FFFFFF"
+                    font.family: C.monoFont
+                    font.pixelSize: 12
+                    selectByMouse: true
+                    activeFocusOnPress: true
+                }
+            }
+
+            Row {
+                id: docButtons
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: 22
+                anchors.bottomMargin: 18
+                spacing: 10
+
+                GlassButton {
+                    text: page.docCopied ? qsTr("已复制") : qsTr("复制全文")
+                    tone: "ghost"
+                    fontSize: 12
+                    padH: 16
+                    minHeight: 32
+                    onClicked: page.copyDocText()
+                }
+
+                GlassButton {
+                    text: qsTr("关闭")
+                    tone: "light"
+                    fontSize: 12
+                    padH: 16
+                    minHeight: 32
+                    onClicked: page.closeDocDialog()
+                }
+            }
+        }
+    }
+
+    TextEdit {
+        id: docClipHelper
+        visible: false
+        width: 1
+        height: 1
     }
 
     // 纤细滚动指示

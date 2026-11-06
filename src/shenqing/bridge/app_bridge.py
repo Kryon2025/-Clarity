@@ -10,6 +10,8 @@ import logging
 import os
 import threading
 import time
+from collections import deque
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from PySide6.QtCore import (
@@ -35,6 +37,7 @@ from ..consts import (
     MIN_MINUTES,
     MODE_LABELS,
     PRESET_MINUTES,
+    QUOTES,
     SPACE_MAX_MINUTES,
     SPACE_MIN_MINUTES,
     SPACE_MINUTE_STEP,
@@ -48,12 +51,14 @@ from ..core.guard import ProcessGuard
 from ..core.session import SessionController, SessionState
 from ..core.spaces import SpaceManager
 from ..core.stats import StatsStore
-from ..services import elevation, updater
+from ..services import elevation, power, timesync, updater
+from ..services import ai as ai_service
+from ..services import sleep_mode, system_control, wallpaper
 from ..services.autostart import AutostartManager
 from ..services.lock_hardening import LockHardening
 from ..services.media_smtc import MediaSmtcService
 from ..services.notifications import NotificationService
-from ..paths import app_data_dir
+from ..paths import app_data_dir, license_file, notice_file
 from ..settings import Settings
 
 logger = logging.getLogger("shenqing.bridge")
@@ -110,8 +115,11 @@ class AppBridge(QObject):
     appLaunched = Signal(str)
     mediaChanged = Signal()
     showMainRequested = Signal()
+    spacesPageRequested = Signal(str)
     settingsRequested = Signal()
     quitRequested = Signal()
+    wallpaperChanged = Signal()
+    sleepChanged = Signal()
     languageChanged = Signal(str)
     _catalogScanned = Signal(list)
     #: 自动更新：后台线程 → 主线程
@@ -136,6 +144,7 @@ class AppBridge(QObject):
         self._hardening = LockHardening(self)
         self._active_space_id = ""
         self._session_level = ""
+        self._session_started_at = timesync.now()
         self._trial_active = False
         self._trial_times: list[float] = []
         self._preview_active = False
@@ -156,6 +165,17 @@ class AppBridge(QObject):
         self._update_error = ""
         self._update_download_path: Path | None = None
         self._update_cancel: updater.CancelToken | None = None
+        # v0.8：睡眠模式 / 系统控制 / 壁纸 / AI 骨架
+        self._sleep = sleep_mode.SleepManager()
+        self._ai = ai_service.AIService(self._settings)
+        self._volume = -1
+        self._sleep_lock_active = False
+        self._clock_clicks: deque[float] = deque()
+        self._bing_url = wallpaper.cached_bing_url()
+        self._avatar_url = ""
+        self._sleep_timer = QTimer(self)
+        self._sleep_timer.setInterval(20000)
+        self._sleep_timer.timeout.connect(self._tick_sleep)
         self._media_info: dict = {}
         self._catalog: list[dict] = load_cached()
         self._catalog_scanning = False
@@ -171,12 +191,19 @@ class AppBridge(QObject):
         self._media = MediaSmtcService(self)
         self._media.changed.connect(self._on_media_changed)
         # 冒烟/测试模式下不起 WinRT 轮询线程（离屏环境没有媒体会话，也没必要）
-        import os as _os
-
-        if _os.environ.get("SHENQING_NO_SCAN") != "1":
+        if os.environ.get("SHENQING_NO_SCAN") != "1":
             self._media.start()
         self._notifications = NotificationService(parent=self)
         self._notifications.register()
+        # v0.8：清理已移除的 CW2 组件插件；启动睡眠模式轮询 + 壁纸预取（测试/冒烟跳过）
+        self._purge_legacy_plugins()
+        if os.environ.get("SHENQING_NO_SCAN") != "1":
+            self._sleep_timer.start()
+            threading.Thread(
+                target=self._load_wallpaper_assets,
+                name="shenqing-wallpaper",
+                daemon=True,
+            ).start()
 
         self._catalogScanned.connect(self._apply_catalog)
         self._updateChecked.connect(self._on_update_checked)
@@ -190,8 +217,6 @@ class AppBridge(QObject):
 
         # 没有缓存时后台补一次扫描，避免启动被 1–5 秒的扫描拖住；
         # 冒烟模式（SHENQING_NO_SCAN=1）跳过，保证离屏测试快速稳定
-        import os
-
         if not self._catalog and os.environ.get("SHENQING_NO_SCAN") != "1":
             QTimer.singleShot(1500, self.refreshAppCatalog)
 
@@ -577,6 +602,408 @@ class AppBridge(QObject):
             logger.warning("系统通知失败：%s", exc)
             self.toast.emit(f"{title} · {body}")
 
+    # ================= v0.8：时间 / 睡眠 / 系统 / 壁纸 / 结束卡片 =================
+    @Property(int, notify=statsChanged)
+    def todaySessions(self) -> int:
+        return int(self._stats.today_sessions(timesync.today()))
+
+    @Property(dict, notify=statsChanged)
+    def todayFocusCard(self) -> dict:
+        """结束卡片：{date, timeRange, spaceName, minutes, sessions, quote}。"""
+        day = timesync.today()
+        sessions = self._stats.sessions_on(day)
+        starts: list = []
+        ends: list = []
+        for item in sessions:
+            raw = str(item.get("start") or item.get("ts") or "")
+            try:
+                started = datetime.fromisoformat(raw)
+            except (TypeError, ValueError):
+                continue
+            starts.append(started)
+            ends.append(started + timedelta(minutes=float(item.get("minutes", 0) or 0)))
+        time_range = ""
+        if starts and ends:
+            time_range = f"{min(starts):%H:%M} - {max(ends):%H:%M}"
+        space_name = ""
+        for item in reversed(sessions):
+            if str(item.get("space") or ""):
+                space_name = str(item.get("space"))
+                break
+        total_minutes = round(
+            sum(float(item.get("minutes", 0) or 0) for item in sessions), 1
+        )
+        return {
+            "date": day.isoformat(),
+            "timeRange": time_range,
+            "spaceName": space_name,
+            "minutes": total_minutes,
+            "sessions": len(sessions),
+            "quote": QUOTES[day.toordinal() % len(QUOTES)] if QUOTES else "",
+        }
+
+    @Slot(int, result=bool)
+    def extendSession(self, minutes: int) -> bool:
+        if not self._session.extend(minutes):
+            return False
+        self.toast.emit(
+            QCoreApplication.translate("ShenQing", "已延长 {0} 分钟").format(int(minutes))
+        )
+        return True
+
+    # ---------- 速启面板 → 空间页 ----------
+    @Slot(str)
+    def openSpacesPage(self, mode: str) -> None:
+        """速启面板点空间/档位：打开主界面并切到空间页（不开始专注）。"""
+        value = str(mode or "")
+        if value not in {item.value for item in LockLevel}:
+            value = ""
+        self.showMainRequested.emit()
+        self.spacesPageRequested.emit(value)
+
+    # ---------- 系统音量 / 关机重启 ----------
+    @Property(int, notify=settingsChanged)
+    def systemVolume(self) -> int:
+        if self._volume < 0:
+            self._volume = system_control.get_volume()
+        return self._volume
+
+    @Slot(int)
+    def setSystemVolume(self, value: int) -> None:
+        try:
+            level = max(0, min(100, int(value)))
+        except (TypeError, ValueError):
+            return
+        if system_control.set_volume(level):
+            self._volume = level
+            self._settings.set("volume_panel", level)
+        self.settingsChanged.emit()
+
+    @Slot(str)
+    def systemPower(self, action: str) -> None:
+        value = str(action or "").lower()
+        if value not in ("shutdown", "restart"):
+            return
+        if system_control.power_action(value):
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "系统将在 1 秒内{0}").format(
+                    QCoreApplication.translate("ShenQing", "关机")
+                    if value == "shutdown"
+                    else QCoreApplication.translate("ShenQing", "重启")
+                )
+            )
+        else:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "电源操作失败"))
+
+    # ---------- 睡眠模式 ----------
+    @Property(list, notify=sleepChanged)
+    def sleepSchedules(self) -> list[str]:
+        return self._sleep.schedule_times()
+
+    @Property(list, notify=sleepChanged)
+    def sleepScheduleItems(self) -> list[dict]:
+        return self._sleep.schedules()
+
+    @Slot(str, result=str)
+    def addSleepSchedule(self, time_text: str) -> str:
+        new_id = self._sleep.add_schedule(time_text)
+        if new_id:
+            self.sleepChanged.emit()
+            self.toast.emit(QCoreApplication.translate("ShenQing", "已添加睡眠锁定时间"))
+        else:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "时间格式不正确或已存在"))
+        return new_id
+
+    @Slot(str, result=bool)
+    def removeSleepSchedule(self, key: str) -> bool:
+        ok = self._sleep.remove_schedule(key)
+        if ok:
+            self.sleepChanged.emit()
+        return ok
+
+    @Property(bool, notify=sleepChanged)
+    def sleepRemindersEnabled(self) -> bool:
+        return self._sleep.reminders_enabled
+
+    @Slot(bool)
+    def setSleepReminders(self, enabled: bool) -> None:
+        self._sleep.set_reminders(bool(enabled))
+        self.sleepChanged.emit()
+
+    @Property(int, notify=sleepChanged)
+    def unlockChances(self) -> int:
+        return self._sleep.unlock_chances
+
+    @Property(str, notify=sleepChanged)
+    def unlockChanceLabel(self) -> str:
+        return self._sleep.unlock_chance_label
+
+    @Slot(result=bool)
+    def clickClockForUnlock(self) -> bool:
+        """连续点时钟 10 次（5 秒内）→ 消耗一次本月机会解锁睡眠锁定。"""
+        now = time.monotonic()
+        while self._clock_clicks and now - self._clock_clicks[0] > 5.0:
+            self._clock_clicks.popleft()
+        self._clock_clicks.append(now)
+        if len(self._clock_clicks) < 10:
+            remain = 10 - len(self._clock_clicks)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "再点 {0} 次可解锁").format(remain)
+            )
+            return False
+        self._clock_clicks.clear()
+        if not self._sleep_lock_active:
+            self.toast.emit(QCoreApplication.translate("ShenQing", "当前没有睡眠锁定"))
+            return False
+        if not self._sleep.try_unlock():
+            self.sleepChanged.emit()
+            self.toast.emit(QCoreApplication.translate("ShenQing", "本月解锁机会已用完"))
+            return False
+        self._sleep_lock_active = False
+        self.sleepChanged.emit()
+        if self._session.state is not SessionState.IDLE:
+            self._session.stop()
+        self.toast.emit(QCoreApplication.translate("ShenQing", "已解锁，提前结束本次睡眠锁定"))
+        return True
+
+    def _tick_sleep(self) -> None:
+        try:
+            now = timesync.now()
+            for due in self._sleep.due_reminders(now):
+                schedule = due["schedule"]
+                offset = int(due["offset"])
+                self._sleep.mark_fired(
+                    now.strftime("%Y-%m-%d"), schedule["time"], offset
+                )
+                self.notify(
+                    QCoreApplication.translate("ShenQing", "睡眠提醒"),
+                    QCoreApplication.translate(
+                        "ShenQing", "{0} 分钟后将进入深清锁定（{1}）"
+                    ).format(offset, schedule["time"]),
+                )
+            if self._session.state is not SessionState.IDLE or self._prepare_active:
+                return
+            due_lock = self._sleep.due_lock(now)
+            if due_lock is None:
+                return
+            heavy = self._spaces.get_by_mode("heavy")
+            minutes = int(heavy.get("minutes", 180)) if heavy else 180
+            self._sleep.mark_fired(
+                now.strftime("%Y-%m-%d"), due_lock["time"], sleep_mode.LOCK_KIND
+            )
+            self._sleep_lock_active = True
+            self._begin_space_session(heavy, "heavy", minutes)
+            self.toast.emit(
+                QCoreApplication.translate("ShenQing", "睡眠模式：已自动进入深清锁定")
+            )
+        except Exception as exc:  # noqa: BLE001 - 睡眠调度失败不能拖垮主程序
+            logger.warning("睡眠模式调度失败：%s", exc)
+
+    # ---------- Bing 壁纸 / 用户头像 ----------
+    @Property(str, notify=wallpaperChanged)
+    def bingWallpaperUrl(self) -> str:
+        if self._bing_url:
+            return self._bing_url
+        return wallpaper.cached_bing_url()
+
+    @Property(str, notify=wallpaperChanged)
+    def userAvatarUrl(self) -> str:
+        return self._avatar_url
+
+    def _load_wallpaper_assets(self) -> None:
+        try:
+            url = wallpaper.refresh_bing_wallpaper()
+            avatar = wallpaper.user_avatar_url()
+            changed = False
+            if url and url != self._bing_url:
+                self._bing_url = url
+                changed = True
+            if avatar != self._avatar_url:
+                self._avatar_url = avatar
+                changed = True
+            if changed:
+                self.wallpaperChanged.emit()
+        except Exception as exc:  # noqa: BLE001
+            logger.info("壁纸/头像加载失败：%s", exc)
+
+    # ---------- AI 骨架 ----------
+    @Property(bool, notify=settingsChanged)
+    def aiConfigured(self) -> bool:
+        return self._ai.configured()
+
+    def _purge_legacy_plugins(self) -> None:
+        """移除已下线的内置组件插件（含已安装数据）。"""
+        legacy = ("com.shenqing.cw2widgets",)
+        try:
+            import shutil
+
+            for plugin_id in legacy:
+                for folder in (
+                    app_data_dir() / "plugins" / plugin_id,
+                    app_data_dir() / "plugin_data" / plugin_id,
+                ):
+                    if folder.exists():
+                        shutil.rmtree(folder, ignore_errors=True)
+                        logger.info("已移除旧插件数据：%s", folder)
+            disabled = self._settings.get("disabled_plugins", [])
+            if isinstance(disabled, list) and any(item in legacy for item in disabled):
+                self._settings.set(
+                    "disabled_plugins", [item for item in disabled if item not in legacy]
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("清理旧插件失败：%s", exc)
+
+    @Property(str, notify=statsChanged)
+    def dailyQuote(self) -> str:
+        day = timesync.today()
+        return QUOTES[day.toordinal() % len(QUOTES)] if QUOTES else ""
+
+    @Property(dict, notify=statsChanged)
+    def lastSession(self) -> dict:
+        """最近一次专注：{spaceName, level, minutes, startMs, endMs, quote, avatarUrl, wallpaperUrl}。"""
+        sessions = self._stats.sessions
+        if not sessions:
+            return {}
+        item = sessions[-1]
+        start_raw = str(item.get("start") or item.get("ts") or "")
+        end_raw = str(item.get("ts") or "")
+        start_dt = None
+        end_dt = None
+        try:
+            start_dt = datetime.fromisoformat(start_raw)
+        except (TypeError, ValueError):
+            pass
+        try:
+            end_dt = datetime.fromisoformat(end_raw)
+        except (TypeError, ValueError):
+            end_dt = None
+        if start_dt is None and end_dt is not None:
+            start_dt = end_dt - timedelta(minutes=float(item.get("minutes", 0) or 0))
+        if end_dt is None and start_dt is not None:
+            end_dt = start_dt + timedelta(minutes=float(item.get("minutes", 0) or 0))
+        day = start_dt.date() if start_dt is not None else timesync.today()
+        return {
+            "spaceName": str(item.get("space") or ""),
+            "level": str(item.get("level") or ""),
+            "minutes": float(item.get("minutes", 0) or 0),
+            "startMs": int(start_dt.timestamp() * 1000) if start_dt else 0,
+            "endMs": int(end_dt.timestamp() * 1000) if end_dt else 0,
+            "quote": QUOTES[day.toordinal() % len(QUOTES)] if QUOTES else "",
+            "avatarUrl": self.userAvatarUrl,
+            "wallpaperUrl": self.bingWallpaperUrl,
+        }
+
+    @Slot(result=str)
+    def shareSummary(self) -> str:
+        """结束卡片分享文本（复制到剪贴板用）。"""
+        card = self.todayFocusCard
+        quote = str(card.get("quote") or "")
+        return (
+            f"深清 · {card.get('date', '')}\n"
+            f"{card.get('timeRange', '')}  {card.get('spaceName', '')}\n"
+            f"专注 {card.get('minutes', 0)} 分钟 · {card.get('sessions', 0)} 次\n"
+            f"{quote}"
+        )
+
+    @Slot(result=str)
+    def saveSummaryImage(self) -> str:
+        """预留：结束卡片图片保存由 QML 的 grabToImage 完成，后端暂不渲染。"""
+        return ""
+
+    @Property(bool, notify=settingsChanged)
+    def onboardingDone(self) -> bool:
+        return bool(self._settings.get("onboarding_done", False))
+
+    @Slot(bool)
+    def setOnboardingDone(self, done: bool) -> None:
+        self._settings.set("onboarding_done", bool(done))
+        self.settingsChanged.emit()
+
+    @Property(list, notify=pluginsChanged)
+    def overlayWidgets(self) -> list[dict]:
+        """全屏遮罩自定义组件；按 overlayWidgetOrder 排序（未排的排后面）。"""
+        widgets = list(self.pluginWidgets)
+        order = self.overlayWidgetOrder
+        if not order:
+            return widgets
+        rank = {value: index for index, value in enumerate(order)}
+
+        def _key(item: dict) -> int:
+            key = f"{item.get('pluginId', '')}:{item.get('id', '')}"
+            return rank.get(key, len(order))
+
+        return sorted(widgets, key=_key)
+
+    @Property(list, notify=statsChanged)
+    def recentSessions(self) -> list[dict]:
+        """最近会话明细（数据页列表用，最多 30 条，倒序）。"""
+        items = self._stats.sessions[-30:]
+        result: list[dict] = []
+        for item in reversed(items):
+            start_raw = str(item.get("start") or item.get("ts") or "")
+            end_raw = str(item.get("ts") or "")
+            start_dt = None
+            end_dt = None
+            try:
+                start_dt = datetime.fromisoformat(start_raw)
+            except (TypeError, ValueError):
+                pass
+            try:
+                end_dt = datetime.fromisoformat(end_raw)
+            except (TypeError, ValueError):
+                end_dt = None
+            result.append(
+                {
+                    "date": str(item.get("date") or ""),
+                    "spaceName": str(item.get("space") or ""),
+                    "level": str(item.get("level") or ""),
+                    "minutes": float(item.get("minutes", 0) or 0),
+                    "completed": bool(item.get("completed", False)),
+                    "startMs": int(start_dt.timestamp() * 1000) if start_dt else 0,
+                    "endMs": int(end_dt.timestamp() * 1000) if end_dt else 0,
+                }
+            )
+        return result
+
+    @Property(list, notify=settingsChanged)
+    def overlayWidgetOrder(self) -> list[str]:
+        raw = self._settings.get("overlay_widget_order", [])
+        return [str(item) for item in raw] if isinstance(raw, list) else []
+
+    @Slot(list)
+    def setOverlayWidgetOrder(self, ids: list) -> None:
+        self._settings.set("overlay_widget_order", [str(item) for item in ids])
+        self.settingsChanged.emit()
+        self.pluginsChanged.emit()
+
+    @Property(int, notify=settingsChanged)
+    def countdownDays(self) -> int:
+        """倒数日剩余天数；未设置返回 -1。"""
+        raw = str(self._settings.get("countdown_date", "") or "")
+        if not raw:
+            return -1
+        try:
+            target = datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            return -1
+        return (target - timesync.today()).days
+
+    @Property(str, notify=settingsChanged)
+    def countdownDate(self) -> str:
+        return str(self._settings.get("countdown_date", "") or "")
+
+    @Slot(str)
+    def setCountdownDate(self, date_text: str) -> None:
+        text = str(date_text or "").strip()
+        if text:
+            try:
+                datetime.strptime(text, "%Y-%m-%d")
+            except ValueError:
+                self.toast.emit(QCoreApplication.translate("ShenQing", "日期格式应为 YYYY-MM-DD"))
+                return
+        self._settings.set("countdown_date", text)
+        self.settingsChanged.emit()
+
     def _begin_space_session(
         self,
         space: dict | None,
@@ -610,6 +1037,8 @@ class AppBridge(QObject):
         )
         self._guard.set_interval(int(self._settings.get("guard_interval_ms", 1000)))
         self._guard.start()
+        self._session_started_at = timesync.now()
+        power.keep_awake()
         self._session.start(int(minutes), int(self._settings.get("pause_limit", 2)))
         self.lockedChanged.emit()
         payload = (
@@ -673,15 +1102,15 @@ class AppBridge(QObject):
     # ================= 统计 / 设置 =================
     @Property(float, notify=statsChanged)
     def todayMinutes(self) -> float:
-        return self._stats.today_minutes()
+        return self._stats.today_minutes(timesync.today())
 
     @Property(float, notify=statsChanged)
     def weekMinutes(self) -> float:
-        return self._stats.week_minutes()
+        return self._stats.week_minutes(timesync.today())
 
     @Property(int, notify=statsChanged)
     def streakDays(self) -> int:
-        return self._stats.streak_days()
+        return self._stats.streak_days(timesync.today())
 
     @Property(int, notify=statsChanged)
     def sessionCount(self) -> int:
@@ -689,7 +1118,7 @@ class AppBridge(QObject):
 
     @Property(list, notify=statsChanged)
     def last7Days(self) -> list[dict]:
-        return self._stats.last_7_days()
+        return self._stats.last_7_days(timesync.today())
 
     @Property(list, constant=True)
     def presetMinutes(self) -> list[int]:
@@ -826,8 +1255,6 @@ class AppBridge(QObject):
 
     @Slot()
     def overlayOpened(self) -> None:
-        if not self.hardeningEnabled:
-            return
         hwnd = 0
         instance = QCoreApplication.instance()
         if instance is not None:
@@ -836,7 +1263,11 @@ class AppBridge(QObject):
                     hwnd = int(window.winId())
                     break
         if hwnd:
-            self._hardening.activate(hwnd, hide_taskbar=True, block_keys=True)
+            # v0.8：任务栏在所有档位的专注期间都保持隐藏；
+            # 键盘钩子仍受「防退出加固」设置控制。
+            self._hardening.activate(
+                hwnd, hide_taskbar=True, block_keys=self.hardeningEnabled
+            )
 
     @Slot()
     def overlayClosed(self) -> None:
@@ -1059,6 +1490,23 @@ class AppBridge(QObject):
         self._settings.set("theme_mode", theme)
         self.settingsChanged.emit()
         self.themeChanged.emit("Light" if theme == "light" else "Dark")
+
+    @Property(str, constant=True)
+    def licenseText(self) -> str:
+        """LICENSE 全文（关于页本地弹窗用）。"""
+        try:
+            return license_file().read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "GNU General Public License v3.0"
+
+
+    @Property(str, constant=True)
+    def noticeText(self) -> str:
+        """NOTICE 全文（关于页本地弹窗用）。"""
+        try:
+            return notice_file().read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "Third-party notices"
 
     @Property(list, notify=languageChanged)
     def changelog(self) -> list[dict]:
@@ -1508,6 +1956,9 @@ class AppBridge(QObject):
 
     def _on_finished(self, elapsed_seconds: int, completed: bool, pauses: int) -> None:
         self._guard.stop()
+        power.allow_sleep()
+        self._sleep_lock_active = False
+        self._clock_clicks.clear()
         space = self._spaces.get(self._active_space_id)
         space_name = str(space["name"]) if space else ""
         minutes = elapsed_seconds / 60
@@ -1521,6 +1972,8 @@ class AppBridge(QObject):
                 completed,
                 pauses,
                 space=space_name,
+                when=timesync.now(),
+                started_at=self._session_started_at,
             )
             self.statsChanged.emit()
             self.toast.emit(

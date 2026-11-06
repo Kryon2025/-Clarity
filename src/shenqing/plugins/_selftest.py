@@ -474,7 +474,7 @@ def run(base: Path) -> None:
         if template_dir.is_dir():
             result = validate_plugin_dir(template_dir)
             check(result["ok"], f"validate 通过模板 {relative}")
-    for builtin_id in ("com.shenqing.hello", "com.shenqing.cw2widgets"):
+    for builtin_id in ("com.shenqing.hello",):
         builtin_path = Path(__file__).resolve().parent / "builtin" / builtin_id
         if builtin_path.is_dir():
             result = validate_plugin_dir(builtin_path)

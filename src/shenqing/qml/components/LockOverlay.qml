@@ -83,6 +83,125 @@ Window {
     readonly property int dockCount: overlay.dockApps !== null && overlay.dockApps !== undefined
                                     ? overlay.dockApps.length : 0
 
+    // ================= v0.8：dock 设置 / 时钟 / 右侧组件 =================
+    property string clockTime: ""
+    property string clockDate: ""
+    property bool dockSettingsOpen: false
+    property bool powerConfirmOpen: false
+    property string pendingPower: ""
+    property int volumeDraft: 50
+    property bool widgetMenuOpen: false
+    property var widgetIds: ["quote", "focusCount", "streak"]
+    readonly property var allWidgetIds: ["clock", "quote", "countdown", "focusCount", "streak"]
+
+    function refreshClock() {
+        var d = new Date()
+        function two(n) { return n < 10 ? "0" + n : String(n) }
+        overlay.clockTime = two(d.getHours()) + ":" + two(d.getMinutes())
+        overlay.clockDate = d.getFullYear() + "/" + two(d.getMonth() + 1) + "/" + two(d.getDate())
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        running: overlay.shouldShow
+        onTriggered: overlay.refreshClock()
+    }
+
+
+    function widgetTitle(id) {
+        if (id === "clock") return qsTr("时钟")
+        if (id === "quote") return qsTr("每日一言")
+        if (id === "countdown") return qsTr("倒数日")
+        if (id === "focusCount") return qsTr("今日专注")
+        return qsTr("连续打卡")
+    }
+    function widgetValue(id) {
+        if (id === "clock") return overlay.clockTime
+        if (id === "quote") return (typeof App !== "undefined" && App.dailyQuote !== undefined)
+                                    ? String(App.dailyQuote) : qsTr("把这件事做完，再抬头。")
+        if (id === "countdown") {
+            if (typeof App !== "undefined" && App.countdownDays !== undefined && Number(App.countdownDays) >= 0)
+                return qsTr("%1 天").arg(Number(App.countdownDays))
+            return qsTr("还没有倒数日")
+        }
+        if (id === "focusCount") return (typeof App !== "undefined" && App.todaySessions !== undefined)
+                                        ? qsTr("%1 次").arg(Number(App.todaySessions)) : qsTr("0 次")
+        return (typeof App !== "undefined" && App.streakDays !== undefined)
+               ? qsTr("%1 天").arg(Number(App.streakDays)) : qsTr("0 天")
+    }
+    function persistWidgetOrder() {
+        if (typeof App !== "undefined" && typeof App.setOverlayWidgetOrder === "function") {
+            var arr = []
+            for (var i = 0; i < overlay.widgetIds.length; i++)
+                arr.push("builtin:" + overlay.widgetIds[i])
+            App.setOverlayWidgetOrder(arr)
+        }
+    }
+    function loadWidgetOrder() {
+        if (typeof App !== "undefined" && App.overlayWidgetOrder !== undefined) {
+            var order = App.overlayWidgetOrder || []
+            var list = []
+            for (var i = 0; i < order.length; i++) {
+                var value = String(order[i])
+                if (value.indexOf("builtin:") === 0) {
+                    var id = value.substring(8)
+                    if (overlay.allWidgetIds.indexOf(id) >= 0 && list.indexOf(id) < 0)
+                        list.push(id)
+                }
+            }
+            if (list.length > 0)
+                overlay.widgetIds = list
+        }
+    }
+    function addWidget(id) {
+        var list = overlay.widgetIds.slice()
+        if (list.indexOf(id) < 0) list.push(id)
+        overlay.widgetIds = list
+        overlay.persistWidgetOrder()
+        overlay.widgetMenuOpen = false
+    }
+    function removeWidget(id) {
+        var list = overlay.widgetIds.slice()
+        var idx = list.indexOf(id)
+        if (idx >= 0) list.splice(idx, 1)
+        overlay.widgetIds = list
+        overlay.persistWidgetOrder()
+    }
+    function openDockSettings() {
+        overlay.volumeDraft = (typeof App !== "undefined" && App.systemVolume !== undefined
+                               && Number(App.systemVolume) >= 0) ? Number(App.systemVolume) : 50
+        overlay.powerConfirmOpen = false
+        overlay.dockSettingsOpen = true
+    }
+    function closeDockSettings() {
+        overlay.powerConfirmOpen = false
+        overlay.dockSettingsOpen = false
+    }
+    function requestPower(kind) {
+        overlay.pendingPower = String(kind)
+        overlay.powerConfirmOpen = true
+    }
+    function confirmPower() {
+        if (typeof App !== "undefined" && typeof App.systemPower === "function")
+            App.systemPower(overlay.pendingPower)
+        overlay.powerConfirmOpen = false
+        overlay.dockSettingsOpen = false
+    }
+    function setVolume(value) {
+        overlay.volumeDraft = Math.max(0, Math.min(100, Math.round(Number(value))))
+        if (typeof App !== "undefined" && typeof App.setSystemVolume === "function")
+            App.setSystemVolume(overlay.volumeDraft)
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        onActivated: {
+            if (overlay.powerConfirmOpen) overlay.powerConfirmOpen = false
+            else if (overlay.dockSettingsOpen) overlay.closeDockSettings()
+            else if (overlay.widgetMenuOpen) overlay.widgetMenuOpen = false
+        }
+    }
+
     // ================= 进出场动画（v0.6） =================
     // Main.pageTransitions=false 时由 Main 传 false，所有过渡瞬时完成
     property bool animationsEnabled: true
@@ -158,6 +277,8 @@ Window {
     }
 
     Component.onCompleted: {
+        overlay.refreshClock()
+        overlay.loadWidgetOrder()
         if (overlay.shouldShow) {
             overlay.bgOpacity = 1
             overlay.contentOpacity = 1
@@ -444,26 +565,24 @@ Window {
             }
         }
 
-        // ---------- 左侧主信息 ----------
+        // ---------- 左侧：大时钟 + 日期 + 剩余时间（v0.8） ----------
         Column {
             id: mainInfo
             visible: !overlay.heavyLock
             anchors.left: parent.left
             anchors.leftMargin: Math.round(overlay.width * 0.085)
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(overlay.width * 0.6, 1000)
-            spacing: 16
+            width: Math.min(overlay.width * 0.42, 760)
+            spacing: 12
 
             Row {
                 spacing: 10
-
                 Glyph {
                     anchors.verticalCenter: parent.verticalCenter
                     kind: "ripple"
                     size: 18
                     color: AppTheme.accent
                 }
-
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: overlay.previewing
@@ -478,24 +597,26 @@ Window {
             }
 
             Text {
-                id: mainCountdownText
-                objectName: "MainCountdown"
-                text: overlay.remainingTextValue
+                id: clockTextDisplay
+                text: overlay.clockTime
                 color: AppTheme.textPrimary
-                Behavior on color {
-                    enabled: overlay.animationsEnabled
-                    ColorAnimation { duration: 140 }
-                }
                 font.family: C.monoFont
-                font.pixelSize: Math.max(84, Math.min(overlay.width * 0.16, overlay.height * 0.26))
+                font.pixelSize: Math.max(96, Math.min(overlay.width * 0.13, overlay.height * 0.22))
                 font.weight: Font.Light
-                font.letterSpacing: 3
+                font.letterSpacing: 4
+            }
+
+            Text {
+                text: overlay.clockDate
+                color: AppTheme.textSecondary
+                font.pixelSize: 16
+                font.family: C.numFont
+                font.letterSpacing: 2
             }
 
             Item {
                 width: parent.width
                 height: 12
-
                 Rectangle {
                     anchors.fill: parent
                     radius: height / 2
@@ -517,35 +638,39 @@ Window {
                 }
             }
 
-            Text {
-                text: overlay.previewing
-                      ? qsTr("预览模式 · 不计入专注统计")
-                      : qsTr("已完成 %1% · 剩余 %2 分钟").arg(overlay.percentValue).arg(overlay.remainingMinutesValue)
-                color: AppTheme.textSecondary
-                font.pixelSize: 14
-                font.family: C.numFont
-            }
-
-            Item { width: 1; height: 10 }
-
-            Text {
-                text: overlay.previewing ? qsTr("10 秒假倒计时，仅用于预览遮罩效果") : qsTr("把这件事做完，再抬头。")
-                color: AppTheme.textTertiary
-                font.pixelSize: 15
-                font.family: C.numFont
-            }
-
-            Text {
-                text: {
-                    if (overlay.previewing) return qsTr("点击右下角「结束预览」退出")
-                    if (overlay.heavyLock) return overlay.trial
-                                              ? qsTr("体验模式 · 可提前结束")
-                                              : qsTr("本轮结束后窗口自动关闭")
-                    if (overlay.trial) return qsTr("体验模式 · 可提前结束")
-                    return qsTr("可以暂停，但时间不会等你")
+            Row {
+                spacing: 12
+                Text {
+                    id: mainCountdownText
+                    objectName: "MainCountdown"
+                    text: overlay.remainingTextValue
+                    color: overlay.countdownFinal ? AppTheme.danger : AppTheme.textPrimary
+                    Behavior on color {
+                        enabled: overlay.animationsEnabled
+                        ColorAnimation { duration: 140 }
+                    }
+                    font.family: C.monoFont
+                    font.pixelSize: 34
+                    font.weight: Font.Light
+                    font.letterSpacing: 2
                 }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: overlay.previewing
+                          ? qsTr("预览剩余 · 不计入专注统计")
+                          : qsTr("剩余 · 已完成 %1%").arg(overlay.percentValue)
+                    color: AppTheme.textSecondary
+                    font.pixelSize: 14
+                    font.family: C.numFont
+                }
+            }
+
+            Text {
+                text: overlay.previewing ? qsTr("10 秒假倒计时，仅用于预览遮罩效果")
+                                          : (overlay.trial ? qsTr("体验模式 · 可提前结束")
+                                                           : qsTr("可以暂停，但时间不会等你"))
                 color: AppTheme.textTertiary
-                font.pixelSize: 12
+                font.pixelSize: 13
                 font.family: C.numFont
             }
         }
@@ -565,6 +690,170 @@ Window {
             font.pixelSize: Math.max(140, Math.min(overlay.width * 0.20, overlay.height * 0.32))
             font.weight: Font.Light
             font.letterSpacing: 4
+        }
+
+        // ---------- 右侧自定义组件区（v0.8；预览模式下可增删） ----------
+        Column {
+            id: rightWidgets
+            visible: !overlay.heavyLock
+            z: 2
+            anchors.right: parent.right
+            anchors.rightMargin: 28
+            anchors.top: parent.top
+            anchors.topMargin: overlay.mediumDock ? 96 : 96
+            width: 300
+            spacing: 10
+
+            Row {
+                width: parent.width
+                spacing: 8
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("组件")
+                    color: AppTheme.textTertiary
+                    font.pixelSize: 12
+                    font.family: C.numFont
+                    font.letterSpacing: 2
+                }
+
+                Item { width: parent.width - 150; height: 1 }
+
+                Item {
+                    id: addWidgetButton
+                    visible: overlay.previewing
+                    width: 96
+                    height: 28
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 14
+                        color: addWidgetArea.containsMouse ? (AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBgAlt) : "#1AFFFFFF"
+                        border.width: 1
+                        border.color: "#40FFFFFF"
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        text: qsTr("＋ 添加组件")
+                        color: AppTheme.textSecondary
+                        font.pixelSize: 11
+                        font.family: C.numFont
+                    }
+                    MouseArea {
+                        id: addWidgetArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: overlay.widgetMenuOpen = !overlay.widgetMenuOpen
+                    }
+                }
+            }
+
+            Repeater {
+                model: overlay.widgetIds
+
+                delegate: Item {
+                    id: widgetCard
+                    width: rightWidgets.width
+                    height: cardColumn.implicitHeight + 24
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 16
+                        color: AppTheme.glass ? "#1AFFFFFF" : AppTheme.cardBg
+                        border.width: 1
+                        border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+                    }
+
+                    Column {
+                        id: cardColumn
+                        x: 14
+                        y: 12
+                        width: parent.width - 28
+                        spacing: 4
+
+                        Row {
+                            width: parent.width
+                            spacing: 6
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: overlay.widgetTitle(String(modelData))
+                                color: AppTheme.textTertiary
+                                font.pixelSize: 11
+                                font.family: C.numFont
+                                font.letterSpacing: 1
+                            }
+                            Item { width: parent.width - 92; height: 1 }
+                            Item {
+                                visible: overlay.previewing
+                                width: 20
+                                height: 20
+                                Glyph {
+                                    anchors.centerIn: parent
+                                    kind: "close"
+                                    size: 10
+                                    color: removeArea.containsMouse ? AppTheme.danger : AppTheme.textTertiary
+                                }
+                                MouseArea {
+                                    id: removeArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: overlay.removeWidget(String(modelData))
+                                }
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: overlay.widgetValue(String(modelData))
+                            color: AppTheme.textPrimary
+                            font.pixelSize: 14
+                            font.family: C.numFont
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
+            // 添加组件菜单
+            Column {
+                visible: overlay.widgetMenuOpen && overlay.previewing
+                width: parent.width
+                spacing: 6
+
+                Repeater {
+                    model: {
+                        var out = []
+                        for (var i = 0; i < overlay.allWidgetIds.length; i++) {
+                            if (overlay.widgetIds.indexOf(overlay.allWidgetIds[i]) < 0)
+                                out.push(overlay.allWidgetIds[i])
+                        }
+                        return out
+                    }
+                    delegate: Item {
+                        width: parent.width
+                        height: 34
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: overlay.widgetTitle(String(modelData))
+                            color: addItemArea.containsMouse ? AppTheme.accent : AppTheme.textSecondary
+                            font.pixelSize: 12
+                            font.family: C.numFont
+                        }
+                        MouseArea {
+                            id: addItemArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: overlay.addWidget(String(modelData))
+                        }
+                    }
+                }
+            }
         }
 
         // ---------- 插件组件区（App.pluginWidgets，按 anchor 四角定位） ----------
@@ -822,6 +1111,214 @@ Window {
                 padH: 24
                 minHeight: 46
                 onClicked: App.stopSession()
+            }
+        }
+
+        // ---------- v0.8：dock 设置面板（音量 / 关机 / 重启） ----------
+        Item {
+            id: dockSettingsLayer
+            anchors.fill: parent
+            z: 20
+            visible: overlay.dockSettingsOpen || overlay.powerConfirmOpen
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                onClicked: overlay.closeDockSettings()
+            }
+            Rectangle { anchors.fill: parent; color: "#99040A10" }
+
+            Rectangle {
+                id: dockSettingsPanel
+                anchors.centerIn: parent
+                width: 440
+                height: settingsColumn.implicitHeight + 44
+                radius: 22
+                color: AppTheme.glass ? "#F20A1B26" : AppTheme.cardBg
+                border.width: 1
+                border.color: AppTheme.glass ? "#4DFFFFFF" : AppTheme.cardBorderStrong
+                MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: {} }
+
+                Column {
+                    id: settingsColumn
+                    x: 22
+                    y: 20
+                    width: parent.width - 44
+                    spacing: 14
+
+                    Row {
+                        width: parent.width
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("声音与电源")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: 16
+                            font.weight: Font.DemiBold
+                            font.family: C.numFont
+                        }
+                    }
+                    Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "volume"
+                            size: 16
+                            color: AppTheme.textSecondary
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("系统音量")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: 13
+                            font.family: C.numFont
+                        }
+                        Item { width: parent.width - 260; height: 1 }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Math.round(overlay.volumeDraft) + "%"
+                            color: AppTheme.accent
+                            font.pixelSize: 13
+                            font.family: C.monoFont
+                        }
+                    }
+
+                    GlassSlider {
+                        width: parent.width
+                        height: 30
+                        from: 0
+                        to: 100
+                        step: 1
+                        value: overlay.volumeDraft
+                        enabled: (typeof App !== "undefined" && App.systemVolume !== undefined
+                                  && Number(App.systemVolume) >= 0)
+                        onMoved: (value) => overlay.setVolume(value)
+                    }
+
+                    Text {
+                        width: parent.width
+                        visible: typeof App !== "undefined" && App.systemVolume !== undefined
+                                 && Number(App.systemVolume) < 0
+                        text: qsTr("当前系统不支持音量调节")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: 11
+                        font.family: C.numFont
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        GlassButton {
+                            text: qsTr("关机")
+                            tone: "ghost"
+                            fontSize: 13
+                            padH: 22
+                            minHeight: 38
+                            onClicked: overlay.requestPower("shutdown")
+                        }
+                        GlassButton {
+                            text: qsTr("重启")
+                            tone: "ghost"
+                            fontSize: 13
+                            padH: 22
+                            minHeight: 38
+                            onClicked: overlay.requestPower("restart")
+                        }
+                        Item { width: parent.width - 260; height: 1 }
+                        GlassButton {
+                            text: qsTr("关闭")
+                            tone: "light"
+                            fontSize: 12
+                            padH: 16
+                            minHeight: 34
+                            onClicked: overlay.closeDockSettings()
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("关机 / 重启会先弹出确认，避免误触。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: 11
+                        font.family: C.numFont
+                    }
+                }
+            }
+
+            Rectangle {
+                visible: overlay.powerConfirmOpen
+                anchors.fill: parent
+                color: "#AA040A10"
+                MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: overlay.powerConfirmOpen = false }
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 400
+                    height: confirmColumn.implicitHeight + 40
+                    radius: 20
+                    color: AppTheme.cardBg
+                    border.width: 1
+                    border.color: AppTheme.cardBorderStrong
+                    Column {
+                        id: confirmColumn
+                        x: 22
+                        y: 20
+                        width: parent.width - 44
+                        spacing: 14
+                        Text {
+                            width: parent.width
+                            text: overlay.pendingPower === "shutdown" ? qsTr("确认关机？") : qsTr("确认重启？")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: 17
+                            font.weight: Font.Bold
+                            font.family: C.numFont
+                        }
+                        Text {
+                            width: parent.width
+                            text: qsTr("系统会立即执行该操作，未保存的工作可能丢失。")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: 12
+                            font.family: C.numFont
+                            wrapMode: Text.WordWrap
+                        }
+                        Row {
+                            width: parent.width
+                            spacing: 10
+                            Item { width: parent.width - 200; height: 1 }
+                            GlassButton {
+                                text: qsTr("取消")
+                                tone: "ghost"
+                                fontSize: 13
+                                padH: 18
+                                minHeight: 36
+                                onClicked: overlay.powerConfirmOpen = false
+                            }
+                            Rectangle {
+                                width: 118
+                                height: 36
+                                radius: 18
+                                color: confirmArea.containsMouse ? "#F06870" : AppTheme.danger
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: qsTr("确认执行")
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 13
+                                    font.weight: Font.DemiBold
+                                    font.family: C.numFont
+                                }
+                                MouseArea {
+                                    id: confirmArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: overlay.confirmPower()
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

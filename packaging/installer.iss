@@ -3,7 +3,7 @@
 ; 前置：先运行 PyInstaller（onedir）生成 dist\深清\深清.exe
 
 #ifndef AppVersion
-  #define AppVersion "0.7.0"
+  #define AppVersion "0.8.0"
 #endif
 #define AppName "深清"
 #define AppNameEn "Clarity"
@@ -54,13 +54,13 @@ Name: "autostart"; Description: "开机自动启动（最高权限计划任务�
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\NOTICE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\许可证"; Filename: "{app}\LICENSE.txt"
-Name: "{group}\第三方组件许可证"; Filename: "{app}\THIRD_PARTY_NOTICES.md"
+Name: "{group}\许可证"; Filename: "{app}\LICENSE"
+Name: "{group}\第三方组件与素材"; Filename: "{app}\NOTICE"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"

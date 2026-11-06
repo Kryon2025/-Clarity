@@ -1,0 +1,61 @@
+# NOTICE
+
+深清（ShenQing / Clarity）
+Copyright (C) 2025 Kryon
+
+This project is licensed under the GNU General Public License, version 3
+(GPL-3.0-only). See the LICENSE file for the full license text.
+
+## Third-party software
+
+This project includes or depends on the following third-party components.
+Each component is licensed under its own terms; the licenses listed here apply
+to those components only.
+
+| Component | Version | License | Source |
+| --- | --- | --- | --- |
+| Qt (Core / Qml / Quick / QuickControls2 / Svg / DBus / WebChannel / WebEngine) | 6.11 | LGPL-3.0-only (dynamic linking) | https://www.qt.io/ |
+| PySide6 (Qt for Python bindings) | 6.11 | LGPL-3.0-only | https://doc.qt.io/qtforpython/ |
+| Shiboken6 | 6.11 | LGPL-3.0-only | https://doc.qt.io/qtforpython/ |
+| RinUI | 0.4.4 | MIT | https://github.com/RinLit-233-shiroko/RinUI |
+| pywin32 | 306+ | PSF-2.0 | https://github.com/mhammond/pywin32 |
+| pycaw | 2024+ | MIT | https://github.com/AndreMiras/pycaw |
+| comtypes | 1.4+ | MIT | https://github.com/enthought/comtypes |
+| PyInstaller (build tool) | 6.x | GPL-2.0-or-later with bootloader exception | https://pyinstaller.org/ |
+| Inno Setup (build tool) | 6.x | Inno Setup License | https://jrsoftware.org/isinfo.php |
+
+### LGPL-3.0 notice (Qt / PySide6 / Shiboken6)
+
+Qt, PySide6 and Shiboken6 are used under the LGPL-3.0 via dynamic linking.
+You may replace the bundled Qt libraries with your own compatible builds by
+replacing the DLLs and Python modules in the installation directory.
+
+License text: https://www.gnu.org/licenses/lgpl-3.0.txt
+
+### MIT notice (RinUI / pycaw / comtypes)
+
+These components are licensed under the MIT License; their original copyright
+and permission notices are retained by their respective authors.
+
+License text: https://opensource.org/license/mit
+
+### PSF-2.0 notice (pywin32)
+
+License text: https://opensource.org/license/psf-2-0
+
+## Resources and design references
+
+| Item | Usage | License / terms |
+| --- | --- | --- |
+| 深清 logo / 图标 | 由项目作者绘制 | GPL-3.0-only (as part of this project) |
+| Class Widgets 2 | 交互与视觉设计参考（空间卡片、关于页、引导、错误弹窗） | GPL-3.0-only; see https://github.com/RinLit-233-shiroko/Class-Widgets-2 |
+| OPPO 禅定空间 | 交互与视觉设计参考（空间卡片、今日专注分享卡片） | 仅参考设计思路，未复制其素材/代码 |
+| Qt 字体与图标字体 | 随 Qt / RinUI 分发 | 见上表 |
+| Bing 每日壁纸 | 每日专注卡片背景（运行时从公开接口获取，不随软件分发） | 仅用于本地展示；版权归 Microsoft/Bing 及原作者所有 |
+
+If you believe a resource is missing from this file, please open an issue.
+
+## Trademarks
+
+"深清"、"Clarity" and the application icon are used by the project author.
+Other product names may be trademarks of their respective owners.

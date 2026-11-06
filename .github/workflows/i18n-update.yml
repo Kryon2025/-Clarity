@@ -106,6 +106,17 @@ jobs:
         shell: bash
         run: python scripts/i18n.py extract
 
+      - name: AI translate (fr_FR / ja_JP)
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        shell: bash
+        run: |
+          if [ -n "$DEEPSEEK_API_KEY" ]; then
+            python scripts/i18n_bot.py fr_FR ja_JP
+          else
+            echo "DEEPSEEK_API_KEY not set, skip AI translation"
+          fi
+
       - name: Commit updated .ts files
         uses: stefanzweifel/git-auto-commit-action@v5
         continue-on-error: true

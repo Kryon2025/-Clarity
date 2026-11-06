@@ -17,7 +17,7 @@
 [![Stars](https://img.shields.io/github/stars/Kryon2025/Clarity?style=for-the-badge&color=orange&label=Stars)](https://github.com/Kryon2025/Clarity)
 [![Release](https://img.shields.io/github/v/release/Kryon2025/Clarity?style=for-the-badge&color=purple&label=Release)](https://github.com/Kryon2025/Clarity/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Kryon2025/Clarity/total.svg?label=Downloads&color=green&style=for-the-badge)](https://github.com/Kryon2025/Clarity/releases)
-[![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)](../../LICENSE.txt)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](../../LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://github.com/Kryon2025/Clarity/releases)
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 
@@ -41,7 +41,7 @@
 - **Keeper watchdog**: relaunches the app about 2s after the process is killed; elevated by default for new installs;
 - **No force-kill**: hides windows and mutes audio instead, preserving unsaved work;
 - **Plugin system**: drop-in plugins with nav entries and overlay widgets; built-in TomaToDo sync and a disabled-by-default CW2 widgets plugin;
-- **i18n**: Simplified Chinese / English with automatic extraction and compilation via GitHub Actions.
+- **i18n**: Simplified Chinese / English / Japanese / French, with automatic extraction and AI-assisted translation via GitHub Actions.
 
 ## Screenshots
 
@@ -65,7 +65,7 @@
 - **Ctrl+K** opens global search; Deep cannot be ended early;
 - Closing the window only hides it to the tray; quit from the tray menu or quick panel;
 - Data lives in `%APPDATA%\ShenQing\` and never leaves your machine;
-- License: [LICENSE.txt](../../LICENSE.txt); third-party notices: [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
+- License: [LICENSE](../../LICENSE) (GPL-3.0); third-party notices and resources: [NOTICE](../../NOTICE).
 
 ## Changelog
 
@@ -107,8 +107,8 @@ Pushing a `v*` tag runs [release.yml](../../.github/workflows/release.yml), whic
 
 ## License
 
-ShenQing (Clarity) is **proprietary software**. All rights reserved. See [LICENSE.txt](../../LICENSE.txt).
-Third-party components are licensed under their own terms, see [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
+ShenQing (Clarity) is released under the **GNU General Public License v3.0 (GPL-3.0-only)**. See [LICENSE](../../LICENSE).
+Third-party components, resources and design references are listed in [NOTICE](../../NOTICE).
 
 Copyright © 2025 Kryon.
 

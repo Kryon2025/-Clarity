@@ -19,6 +19,14 @@ DEFAULTS: dict[str, Any] = {
     "keep_alive": True,     # 不杀进程：只隐藏窗口 + 静音（保留未保存工作）
     "admin_mode": False,    # 以管理员身份运行（启动时 UAC 提权）
     "auto_update": True,    # 启动后自动检查 GitHub Releases 更新
+    "ai_enabled": False,    # AI 集成（v0.8 仅占位，等 API/key）
+    "ai_api_base": "",
+    "ai_api_key": "",
+    "ai_model": "",
+    "volume_panel": 50,     # dock 设置面板上次的系统音量（0-100）
+    "onboarding_done": False,  # 首次使用引导是否完成
+    "countdown_date": "",      # 倒数日目标日期 YYYY-MM-DD（空=不显示）
+    "overlay_widget_order": [],  # 全屏遮罩自定义组件顺序 ["pluginId:itemId"]
     "default_minutes": 25,
     "lock_level": LockLevel.MEDIUM.value,
     "guard_interval_ms": 1000,
