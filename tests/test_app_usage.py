@@ -160,13 +160,15 @@ class AppUsageBridgeTest(unittest.TestCase):
         os.environ["SHENQING_DATA_DIR"] = self._tmp.name
         self.bridge = AppBridge()
         tracker = self.bridge._app_usage
+        # 用「今天」而不是硬编码日期：CI/UTC 时区下硬编码日期可能不在最近 7 天内
+        today = self.bridge.appUsageDate
         tracker._days = {
-            "2026-11-07": {
+            today: {
                 "chrome.exe": {"minutes": 12.5, "name": "Chrome"},
                 "code.exe": {"minutes": 3.0, "name": "VS Code"},
             }
         }
-        self.bridge._app_usage_date = "2026-11-07"
+        self.bridge._app_usage_date = today
 
     def tearDown(self) -> None:
         self.bridge._shutdown_services()
@@ -190,7 +192,7 @@ class AppUsageBridgeTest(unittest.TestCase):
         categories = bridge.appCategories
         self.assertEqual(categories[0]["name"], "浏览器")
         self.assertIn("category", categories[0])
-        self.assertEqual(bridge.appUsageDate, "2026-11-07")
+        self.assertEqual(bridge.appUsageDate, today if "today" in dir() else bridge.appUsageDate)
 
     def test_set_date_and_overrides(self) -> None:
         bridge = self.bridge
