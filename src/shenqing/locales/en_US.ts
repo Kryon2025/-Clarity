@@ -603,42 +603,42 @@
 <context>
     <name>EnterCountdown</name>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="12"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="14"/>
         <source>深清 · 即将进入</source>
         <translation>ShenQing · Entering</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="99"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="214"/>
         <source>浅清</source>
         <translation>Light</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="100"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="215"/>
         <source>覆清</source>
         <translation>Veil</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="101"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="216"/>
         <source>深清</source>
         <translation>ShenQing</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="102"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="217"/>
         <source>专注</source>
         <translation>Focus</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="359"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="515"/>
         <source>即将进入 · %1</source>
         <translation>Entering · %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="389"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="547"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../qml/components/EnterCountdown.qml" line="404"/>
+        <location filename="../qml/components/EnterCountdown.qml" line="572"/>
         <source>点击任意位置取消 / Esc</source>
         <translation>Click anywhere to cancel / Esc</translation>
     </message>
