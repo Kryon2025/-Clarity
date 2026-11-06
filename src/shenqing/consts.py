@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.9.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,27 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.9.0",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "Patina 式应用使用时长统计：前台应用每 5 秒采样，自动跳过空闲/锁屏/休眠，分类与颜色可自定义，数据页可看今日 / 本周 / 历史",
+            "AI 助手：支持 Groq、智谱 GLM、硅基流动与自定义 OpenAI 兼容接口，异步问答、测试连接，Key 只保存在本机",
+            "数据页新增「应用使用时长」卡片：类别横向 chips + 堆叠条、应用排行与比例条",
+            "设置页新增 AI 助手配置卡片；右上角新增 AI 助手浮层（问问题、复制回答、未配置引导）",
+            "AI 可做设置语义搜索（自然语言找设置项），失败自动回退本地模糊匹配",
+            "NOTICE 增加 Patina（MIT）设计参考说明",
+        ],
+        "items_en": [
+            "Patina-style app usage tracking: foreground app sampled every 5 seconds, idle/lock/sleep skipped, custom categories and colors, today / this week / history on the stats page",
+            "AI assistant: Groq, Zhipu GLM, SiliconFlow and custom OpenAI-compatible endpoints; async chat, connection test, API key stored locally only",
+            "New App usage card on the stats page: category chips, stacked bar, app ranking with proportion bars",
+            "AI assistant card in settings; global AI assistant panel in the top-right corner (ask, copy answer, setup hint)",
+            "AI-powered semantic settings search with local fuzzy fallback",
+            "NOTICE now credits Patina (MIT) as a design reference",
+        ],
+    },
     {
         "version": "0.8.0",
         "date": "2025-11-07",

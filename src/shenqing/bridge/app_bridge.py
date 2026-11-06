@@ -53,6 +53,7 @@ from ..core.spaces import SpaceManager
 from ..core.stats import StatsStore
 from ..services import elevation, power, timesync, updater
 from ..services import ai as ai_service
+from ..services import app_usage
 from ..services import sleep_mode, system_control, wallpaper
 from ..services.autostart import AutostartManager
 from ..services.lock_hardening import LockHardening
@@ -120,12 +121,16 @@ class AppBridge(QObject):
     quitRequested = Signal()
     wallpaperChanged = Signal()
     sleepChanged = Signal()
+    appUsageChanged = Signal()
+    aiChanged = Signal()
     languageChanged = Signal(str)
     _catalogScanned = Signal(list)
     #: 自动更新：后台线程 → 主线程
     _updateChecked = Signal(object, str)
     _updateProgress = Signal(int)
     _updateDownloaded = Signal(bool, str)
+    #: v0.9 AI：线程池回调 → 主线程（token 防止旧回答覆盖新问题）
+    _aiAsyncResult = Signal(int, object)
 
     def __init__(
         self,
@@ -168,6 +173,17 @@ class AppBridge(QObject):
         # v0.8：睡眠模式 / 系统控制 / 壁纸 / AI 骨架
         self._sleep = sleep_mode.SleepManager()
         self._ai = ai_service.AIService(self._settings)
+        # v0.9 AI 异步状态
+        self._ai_state = "idle"
+        self._ai_answer = ""
+        self._ai_error = ""
+        self._ai_token = 0
+        self._ai_mode = ""
+        # v0.9 应用使用时长统计（前台应用 5s 采样）
+        self._app_usage = app_usage.AppUsageTracker(
+            now_provider=timesync.now, parent=self
+        )
+        self._app_usage_date = ""
         self._volume = -1
         self._sleep_lock_active = False
         self._clock_clicks: deque[float] = deque()
@@ -199,16 +215,22 @@ class AppBridge(QObject):
         self._purge_legacy_plugins()
         if os.environ.get("SHENQING_NO_SCAN") != "1":
             self._sleep_timer.start()
+            self._app_usage.start()
             threading.Thread(
                 target=self._load_wallpaper_assets,
                 name="shenqing-wallpaper",
                 daemon=True,
             ).start()
+        application = QCoreApplication.instance()
+        if application is not None:
+            application.aboutToQuit.connect(self._shutdown_services)
 
         self._catalogScanned.connect(self._apply_catalog)
         self._updateChecked.connect(self._on_update_checked)
         self._updateProgress.connect(self._on_update_progress)
         self._updateDownloaded.connect(self._on_update_downloaded)
+        self._aiAsyncResult.connect(self._on_ai_result)
+        self._app_usage.changed.connect(self._on_app_usage_changed)
         self._session.stateChanged.connect(self.stateChanged)
         self._session.stateChanged.connect(self.lockedChanged)
         self._session.tick.connect(self._on_tick)
@@ -826,10 +848,275 @@ class AppBridge(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.info("壁纸/头像加载失败：%s", exc)
 
-    # ---------- AI 骨架 ----------
+    # ================= v0.9 AI 集成 =================
     @Property(bool, notify=settingsChanged)
     def aiConfigured(self) -> bool:
         return self._ai.configured()
+
+    @Property(bool, notify=settingsChanged)
+    def aiEnabled(self) -> bool:
+        return self._ai.enabled()
+
+    @Slot(bool)
+    def setAIEnabled(self, enabled: bool) -> None:
+        self._settings.set("ai_enabled", bool(enabled))
+        self.settingsChanged.emit()
+
+    @Property(list, constant=True)
+    def aiProviders(self) -> list[dict]:
+        return ai_service.provider_list()
+
+    @Property(str, notify=settingsChanged)
+    def aiProvider(self) -> str:
+        return self._ai.provider()
+
+    @Slot(str)
+    def setAIProvider(self, value: str) -> None:
+        if self._ai.set_provider(str(value or "")):
+            self.settingsChanged.emit()
+
+    @Property(str, notify=settingsChanged)
+    def aiBase(self) -> str:
+        return self._ai.api_base()
+
+    @Slot(str)
+    def setAIBase(self, url: str) -> None:
+        self._settings.set("ai_api_base", str(url or "").strip())
+        self.settingsChanged.emit()
+
+    @Property(str, notify=settingsChanged)
+    def aiModel(self) -> str:
+        return self._ai.model()
+
+    @Slot(str)
+    def setAIModel(self, model: str) -> None:
+        self._settings.set("ai_model", str(model or "").strip())
+        self.settingsChanged.emit()
+
+    @Property(bool, notify=settingsChanged)
+    def aiHasKey(self) -> bool:
+        return self._ai.has_key()
+
+    @Slot(str)
+    def setAIKey(self, key: str) -> None:
+        self._settings.set("ai_api_key", str(key or "").strip())
+        self.settingsChanged.emit()
+
+    @Property(str, notify=aiChanged)
+    def aiState(self) -> str:
+        return self._ai_state
+
+    @Property(str, notify=aiChanged)
+    def aiAnswer(self) -> str:
+        return self._ai_answer
+
+    @Property(str, notify=aiChanged)
+    def aiError(self) -> str:
+        return self._ai_error
+
+    def _ai_settings_items(self) -> list[dict]:
+        return [
+            {"key": "theme_mode", "title": "主题", "hint": "纯色 / 浅色 / 液态玻璃"},
+            {"key": "theme", "title": "窗口外观", "hint": "Auto / Light / Dark"},
+            {"key": "language", "title": "语言", "hint": "跟随系统 / 中文 / English"},
+            {"key": "autostart", "title": "开机自启", "hint": "登录时启动深清"},
+            {"key": "hardening", "title": "防退出加固", "hint": "隐藏任务栏、屏蔽系统快捷键"},
+            {"key": "keep_alive", "title": "保留进程", "hint": "不结束进程，只隐藏窗口与静音"},
+            {"key": "admin_mode", "title": "管理员权限", "hint": "以最高权限运行 / UAC"},
+            {"key": "auto_update", "title": "自动更新", "hint": "启动后检查 GitHub Releases"},
+            {"key": "default_mode", "title": "默认强度", "hint": "浅清 / 覆清 / 深清"},
+            {"key": "default_minutes", "title": "默认时长", "hint": "速启默认分钟数"},
+            {"key": "lock_level", "title": "锁定强度", "hint": "轻度 / 中度 / 重度"},
+            {"key": "pause_limit", "title": "暂停次数", "hint": "一次会话允许的暂停上限"},
+            {"key": "volume_panel", "title": "系统音量", "hint": "dock 设置面板音量"},
+            {"key": "sleepRemindersEnabled", "title": "睡眠提醒", "hint": "提前 60/30/1 分钟提醒"},
+            {"key": "countdown_date", "title": "倒数日", "hint": "目标日期 YYYY-MM-DD"},
+            {"key": "ai_enabled", "title": "AI 助手", "hint": "启用 AI 问答与设置搜索"},
+            {"key": "ai_provider", "title": "AI 服务商", "hint": "Groq / 智谱 / SiliconFlow"},
+            {"key": "onboarding_done", "title": "新手引导", "hint": "首次使用欢迎页"},
+            {"key": "guard_interval_ms", "title": "巡检间隔", "hint": "进程守护轮询毫秒数"},
+            {"key": "hosts_block_enabled", "title": "网站屏蔽", "hint": "写 hosts 屏蔽网站"},
+        ]
+
+    @Slot(str)
+    def askAI(self, prompt: str) -> None:
+        text = str(prompt or "").strip()
+        if not text:
+            return
+        if not self._ai.configured():
+            self._ai_state = "error"
+            self._ai_error = "AI 未启用或未配置"
+            self._ai_answer = ""
+            self.aiChanged.emit()
+            return
+        self._start_ai_job("ask", text)
+
+    @Slot(str)
+    def aiAsk(self, prompt: str) -> None:
+        """UI 别名：与 askAI 相同。"""
+        self.askAI(prompt)
+
+    @Slot()
+    def aiCancel(self) -> None:
+        self._ai_token += 1
+        self._ai_state = "idle"
+        self._ai_answer = ""
+        self._ai_error = ""
+        self._ai_mode = ""
+        self.aiChanged.emit()
+
+    @Slot()
+    def testAIConnection(self) -> None:
+        if not self._ai.configured():
+            self._ai_state = "error"
+            self._ai_error = "AI 未启用或未配置"
+            self._ai_answer = ""
+            self.aiChanged.emit()
+            self.toast.emit(QCoreApplication.translate("ShenQing", "请先启用并填写 AI 配置"))
+            return
+        self._start_ai_job("test", "")
+
+    def _start_ai_job(self, mode: str, prompt: str) -> None:
+        self._ai_token += 1
+        token = self._ai_token
+        self._ai_mode = str(mode)
+        self._ai_state = "loading"
+        self._ai_answer = ""
+        self._ai_error = ""
+        self.aiChanged.emit()
+
+        def _callback(result: object) -> None:
+            try:
+                self._aiAsyncResult.emit(token, result)
+            except RuntimeError:  # 宿主已销毁
+                pass
+
+        if mode == "test":
+            self._ai.submit_test(_callback)
+        else:
+            self._ai.submit_ask(prompt, _callback)
+
+    @Slot(int, object)
+    def _on_ai_result(self, token: int, result: object) -> None:
+        if int(token) != self._ai_token:
+            return
+        data = result if isinstance(result, dict) else {}
+        mode = self._ai_mode
+        if data.get("ok"):
+            self._ai_state = "ok"
+            self._ai_answer = str(data.get("text") or "")
+            self._ai_error = ""
+            if mode == "test":
+                self.toast.emit(QCoreApplication.translate("ShenQing", "AI 连接正常"))
+        else:
+            self._ai_state = "error"
+            self._ai_answer = ""
+            self._ai_error = self._ai.sanitize(data.get("error") or "AI 请求失败")
+            if mode == "test":
+                self.toast.emit(
+                    QCoreApplication.translate("ShenQing", "AI 连接失败：{0}").format(
+                        self._ai_error[:80]
+                    )
+                )
+        self.aiChanged.emit()
+
+    @Slot(str, result=list)
+    def aiSearchSettings(self, query: str) -> list[dict]:
+        """设置语义搜索；未配置/失败时回退本地模糊匹配。"""
+        text = str(query or "").strip()
+        if not text:
+            return []
+        items = self._ai_settings_items()
+        try:
+            return self._ai.search_settings(text, items)
+        except Exception as exc:  # noqa: BLE001
+            logger.info("AI 设置搜索失败，回退本地匹配：%s", self._ai.sanitize(exc))
+            return ai_service.local_search(text, items)
+
+    # ================= v0.9 应用使用时长 =================
+    @Property(str, notify=statsChanged)
+    def appUsageDate(self) -> str:
+        return self._app_usage_date or timesync.today().isoformat()
+
+    @Slot(str)
+    def setAppUsageDate(self, date_text: str) -> None:
+        text = str(date_text or "").strip()
+        if text:
+            try:
+                datetime.strptime(text, "%Y-%m-%d")
+            except ValueError:
+                return
+        self._app_usage_date = text
+        self.statsChanged.emit()
+        self.appUsageChanged.emit()
+
+    def _usage_day(self) -> str:
+        return self._app_usage_date or timesync.today().isoformat()
+
+    @Property(list, notify=statsChanged)
+    def appUsageToday(self) -> list[dict]:
+        return self._app_usage.usage_for(self._usage_day())
+
+    @Property(list, notify=statsChanged)
+    def appUsageWeek(self) -> list[dict]:
+        return self._app_usage.week_usage()
+
+    @Property(int, notify=statsChanged)
+    def appUsageTotalMinutes(self) -> int:
+        return int(round(self._app_usage.total_minutes(self._usage_day())))
+
+    @Property(int, notify=statsChanged)
+    def appUsageTotalToday(self) -> int:
+        return int(round(self._app_usage.total_minutes(self._usage_day())))
+
+    @Property(int, notify=statsChanged)
+    def appUsageTotalWeek(self) -> int:
+        return int(round(sum(item["minutes"] for item in self._app_usage.week_usage(limit=1000))))
+
+    @Property(list, notify=statsChanged)
+    def appCategories(self) -> list[dict]:
+        return [
+            {
+                "category": item["category"],
+                "name": item.get("label", item["category"]),
+                "label": item.get("label", item["category"]),
+                "minutes": item["minutes"],
+                "color": item["color"],
+            }
+            for item in self._app_usage.category_totals(self._usage_day())
+        ]
+
+    @Slot(str, str, result=bool)
+    def setAppCategory(self, exe: str, category: str) -> bool:
+        ok = self._app_usage.set_category(exe, category)
+        if ok:
+            self.statsChanged.emit()
+            self.appUsageChanged.emit()
+        return ok
+
+    @Slot(str, str, result=bool)
+    def setAppColor(self, exe: str, color: str) -> bool:
+        ok = self._app_usage.set_color(exe, color)
+        if ok:
+            self.statsChanged.emit()
+            self.appUsageChanged.emit()
+        return ok
+
+    def _on_app_usage_changed(self) -> None:
+        self.statsChanged.emit()
+        self.appUsageChanged.emit()
+
+    # ================= 服务退出清理 =================
+    def _shutdown_services(self) -> None:
+        try:
+            self._app_usage.shutdown()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止应用使用统计失败：%s", exc)
+        try:
+            self._ai.shutdown()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("停止 AI 线程池失败：%s", exc)
+
 
     def _purge_legacy_plugins(self) -> None:
         """移除已下线的内置组件插件（含已安装数据）。"""

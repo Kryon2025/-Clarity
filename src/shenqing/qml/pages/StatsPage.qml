@@ -13,6 +13,78 @@ Item {
 
     property Item glassSource: null
 
+    // v0.9 应用使用时长：截图 harness 可注入演示数据；正式运行取后端接口
+    property var demoUsageToday: null
+    property var demoUsageWeek: null
+    property var demoCategories: null
+    property int usageRange: 0   // 0=今日，1=本周
+    readonly property var appUsageColors: ["#2ED3C6", "#7FB6FF", "#F2C879", "#C9A7FF",
+                                           "#F27E7E", "#8FD1A8", "#E8B86B", "#7ED7E8"]
+    function itemName(item) {
+        if (item === null || item === undefined) return ""
+        if (item.name !== undefined) return String(item.name)
+        if (item.app !== undefined) return String(item.app)
+        if (item.title !== undefined) return String(item.title)
+        return String(item)
+    }
+    function itemMinutes(item) {
+        if (item === null || item === undefined) return 0
+        if (item.minutes !== undefined) return Math.max(0, Number(item.minutes) || 0)
+        if (item.duration !== undefined) return Math.max(0, Number(item.duration) || 0)
+        return 0
+    }
+    function itemColor(item, index) {
+        if (item !== null && item !== undefined && item.color !== undefined && String(item.color) !== "")
+            return String(item.color)
+        return page.appUsageColors[index % page.appUsageColors.length]
+    }
+    readonly property var rawAppUsage: {
+        if (page.usageRange === 0) {
+            if (page.demoUsageToday !== null) return page.demoUsageToday
+            return (typeof App !== "undefined" && App.appUsageToday !== undefined && App.appUsageToday !== null)
+                   ? App.appUsageToday : []
+        }
+        if (page.demoUsageWeek !== null) return page.demoUsageWeek
+        return (typeof App !== "undefined" && App.appUsageWeek !== undefined && App.appUsageWeek !== null)
+               ? App.appUsageWeek : []
+    }
+    readonly property var appUsage: {
+        var out = []
+        for (var i = 0; i < page.rawAppUsage.length; i++)
+            out.push(page.rawAppUsage[i])
+        out.sort(function (a, b) { return page.itemMinutes(b) - page.itemMinutes(a) })
+        return out
+    }
+    readonly property real appUsageMax: {
+        var maxValue = 1
+        for (var i = 0; i < page.appUsage.length; i++)
+            maxValue = Math.max(maxValue, page.itemMinutes(page.appUsage[i]))
+        return maxValue
+    }
+    readonly property var rawCategories: {
+        if (page.demoCategories !== null) return page.demoCategories
+        return (typeof App !== "undefined" && App.appCategories !== undefined && App.appCategories !== null)
+               ? App.appCategories : []
+    }
+    readonly property var appCategories: {
+        var out = []
+        for (var i = 0; i < page.rawCategories.length; i++)
+            out.push(page.rawCategories[i])
+        out.sort(function (a, b) { return page.itemMinutes(b) - page.itemMinutes(a) })
+        return out
+    }
+    readonly property real categoryTotal: {
+        var total = 0
+        for (var i = 0; i < page.appCategories.length; i++)
+            total += page.itemMinutes(page.appCategories[i])
+        return total
+    }
+    function usageMinutesText(minutes) {
+        var m = Math.round(Number(minutes) || 0)
+        if (m >= 60) return qsTr("%1 小时 %2 分钟").arg(Math.floor(m / 60)).arg(m % 60)
+        return qsTr("%1 分钟").arg(m)
+    }
+
     readonly property var days: (typeof App !== "undefined" && App.last7Days !== undefined) ? App.last7Days : []
     readonly property int todaySessions: (typeof App !== "undefined" && App.todaySessions !== undefined)
                                          ? Number(App.todaySessions) : 0
@@ -275,6 +347,221 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // ---------- v0.9 应用使用时长 ----------
+            GlassCard {
+                width: parent.width
+                implicitHeight: usageColumn.implicitHeight + 36
+                height: implicitHeight
+                radius: 22
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: usageColumn
+                    x: 22
+                    y: 18
+                    width: parent.width - 44
+                    spacing: 12
+
+                    Row {
+                        width: parent.width
+                        spacing: 12
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("应用使用时长")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: 16
+                            font.weight: Font.DemiBold
+                            font.family: C.numFont
+                        }
+
+                        Item { width: parent.width - 320; height: 1 }
+
+                        // 今日 / 本周切换
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 4
+
+                            Repeater {
+                                model: [qsTr("今日"), qsTr("本周")]
+                                delegate: Item {
+                                    width: 62
+                                    height: 28
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 14
+                                        color: page.usageRange === index ? AppTheme.accent
+                                              : (tabArea.containsMouse ? AppTheme.cardBgAlt : AppTheme.cardBg)
+                                        border.width: 1
+                                        border.color: page.usageRange === index ? AppTheme.accent : AppTheme.cardBorder
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: String(modelData)
+                                        color: page.usageRange === index ? "#FFFFFF" : AppTheme.textSecondary
+                                        font.pixelSize: 12
+                                        font.family: C.numFont
+                                    }
+                                    MouseArea {
+                                        id: tabArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: page.usageRange = index
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 类别横排名称（一行可多个）
+                    Flow {
+                        width: parent.width
+                        spacing: 8
+                        visible: page.appCategories.length > 0
+
+                        Repeater {
+                            model: page.appCategories
+                            delegate: Item {
+                                width: categoryName.implicitWidth + 46
+                                height: 26
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 13
+                                    color: AppTheme.cardBgAlt
+                                    border.width: 1
+                                    border.color: AppTheme.cardBorder
+                                }
+                                Rectangle {
+                                    x: 10
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 7
+                                    height: 7
+                                    radius: 3.5
+                                    color: page.itemColor(modelData, index)
+                                }
+                                Text {
+                                    id: categoryName
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 23
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: page.itemName(modelData) + " · " + page.usageMinutesText(page.itemMinutes(modelData))
+                                    color: AppTheme.textSecondary
+                                    font.pixelSize: 11
+                                    font.family: C.numFont
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+
+                    // 类别堆叠条
+                    Item {
+                        width: parent.width
+                        height: 12
+                        visible: page.categoryTotal > 0
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 6
+                            color: AppTheme.glass ? "#1AFFFFFF" : AppTheme.divider
+                        }
+
+                        Row {
+                            anchors.fill: parent
+                            spacing: 2
+
+                            Repeater {
+                                model: page.appCategories
+                                delegate: Rectangle {
+                                    width: Math.max(3, (parent.width - (page.appCategories.length - 1) * 2)
+                                                    * page.itemMinutes(modelData) / Math.max(1, page.categoryTotal))
+                                    height: parent.height
+                                    radius: 5
+                                    color: page.itemColor(modelData, index)
+                                }
+                            }
+                        }
+                    }
+
+                    // 应用列表
+                    Column {
+                        width: parent.width
+                        spacing: 2
+
+                        Repeater {
+                            model: page.appUsage
+
+                            delegate: Item {
+                                width: parent.width
+                                height: 34
+
+                                Row {
+                                    anchors.fill: parent
+                                    spacing: 10
+
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 9
+                                        height: 9
+                                        radius: 4.5
+                                        color: page.itemColor(modelData, index)
+                                    }
+
+                                    Text {
+                                        width: 150
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: page.itemName(modelData)
+                                        color: AppTheme.textPrimary
+                                        font.pixelSize: 13
+                                        font.family: C.numFont
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Item {
+                                        width: parent.width - 150 - 9 - 90 - 30
+                                        height: 8
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            radius: 4
+                                            color: AppTheme.glass ? "#14FFFFFF" : AppTheme.divider
+                                        }
+                                        Rectangle {
+                                            width: parent.width * page.itemMinutes(modelData) / page.appUsageMax
+                                            height: parent.height
+                                            radius: 4
+                                            color: page.itemColor(modelData, index)
+                                        }
+                                    }
+
+                                    Text {
+                                        width: 90
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        horizontalAlignment: Text.AlignRight
+                                        text: page.usageMinutesText(page.itemMinutes(modelData))
+                                        color: AppTheme.textSecondary
+                                        font.pixelSize: 11
+                                        font.family: C.numFont
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: page.appUsage.length === 0
+                            width: parent.width
+                            text: qsTr("还没有应用使用记录，开始一轮专注吧")
+                            color: AppTheme.textTertiary
+                            font.pixelSize: 12
+                            font.family: C.numFont
                         }
                     }
                 }

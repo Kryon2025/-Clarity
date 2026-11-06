@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,8 @@ DEFAULTS: dict[str, Any] = {
     "keep_alive": True,     # 不杀进程：只隐藏窗口 + 静音（保留未保存工作）
     "admin_mode": False,    # 以管理员身份运行（启动时 UAC 提权）
     "auto_update": True,    # 启动后自动检查 GitHub Releases 更新
-    "ai_enabled": False,    # AI 集成（v0.8 仅占位，等 API/key）
+    "ai_enabled": False,    # AI 集成（v0.9 真实接入，云端免费 API）
+    "ai_provider": "groq",  # groq / glm / siliconflow / custom
     "ai_api_base": "",
     "ai_api_key": "",
     "ai_model": "",
@@ -59,12 +61,15 @@ class Settings:
             self._data = dict(DEFAULTS)
 
     def save(self) -> None:
+        """原子写：先写 .tmp 再 os.replace，避免断电/并发写坏 settings.json。"""
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(
+            temp = self.path.with_name(self.path.name + ".tmp")
+            temp.write_text(
                 json.dumps(self._data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
+            os.replace(temp, self.path)
         except OSError:
             pass
 

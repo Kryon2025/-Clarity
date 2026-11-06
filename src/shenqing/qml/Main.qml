@@ -978,6 +978,40 @@ FluentWindow {
                     onClicked: win.clearGlobalSearch()
                 }
 
+                // v0.9 AI 助手入口（搜索框左侧）
+                Item {
+                    id: aiEntryButton
+                    objectName: "AIEntryButton"
+                    width: 38
+                    height: 38
+                    anchors.top: parent.top
+                    anchors.topMargin: 18
+                    anchors.right: parent.right
+                    anchors.rightMargin: 270
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 19
+                        color: aiEntryArea.containsMouse ? (AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBgAlt)
+                                                         : (AppTheme.glass ? "transparent" : AppTheme.cardBg)
+                        border.width: 1
+                        border.color: AppTheme.glass ? "#33FFFFFF" : AppTheme.cardBorder
+                    }
+                    Glyph {
+                        anchors.centerIn: parent
+                        kind: "sparkle"
+                        size: 17
+                        color: AppTheme.accent
+                    }
+                    MouseArea {
+                        id: aiEntryArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: aiPanel.showPanel()
+                    }
+                }
+
                 // 搜索框
                 Item {
                     id: globalSearchBox
@@ -1306,6 +1340,13 @@ FluentWindow {
                 }
             }
         }
+    }
+
+    // ---------- v0.9 全局 AI 助手浮层 ----------
+    AIPanel {
+        id: aiPanel
+        animationsEnabled: win.pageTransitions
+        onSettingsRequested: win.navIndex = 3
     }
 
     // ---------- 新手引导（首次启动 / 设置页手动打开） ----------

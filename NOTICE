@@ -49,6 +49,7 @@ License text: https://opensource.org/license/psf-2-0
 | --- | --- | --- |
 | 深清 logo / 图标 | 由项目作者绘制 | GPL-3.0-only (as part of this project) |
 | Class Widgets 2 | 交互与视觉设计参考（空间卡片、关于页、引导、错误弹窗） | GPL-3.0-only; see https://github.com/RinLit-233-shiroko/Class-Widgets-2 |
+| Patina (Ceceliaee/patina) | 桌面应用使用时长统计的交互参考（应用时长、分类、统计卡片） | MIT; see https://github.com/Ceceliaee/patina |
 | OPPO 禅定空间 | 交互与视觉设计参考（空间卡片、今日专注分享卡片） | 仅参考设计思路，未复制其素材/代码 |
 | Qt 字体与图标字体 | 随 Qt / RinUI 分发 | 见上表 |
 | Bing 每日壁纸 | 每日专注卡片背景（运行时从公开接口获取，不随软件分发） | 仅用于本地展示；版权归 Microsoft/Bing 及原作者所有 |

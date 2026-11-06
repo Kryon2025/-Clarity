@@ -18,6 +18,115 @@ Item {
     property string newSleepTime: "23:30"
     property int clockClickCount: 0
 
+    // ---------- v0.9 AI 助手设置 ----------
+    property bool aiLocalEnabled: false
+    property bool aiProviderMenuOpen: false
+    property int aiProviderIndex: 0
+    property string aiModelDraft: ""
+    property string aiBaseDraft: ""
+    property string aiKeyDraft: ""
+    property string aiTestText: ""
+    property string aiTestKind: "idle"
+    readonly property var aiProviderList: {
+        if (typeof App !== "undefined" && App.aiProviders !== undefined && App.aiProviders !== null
+                && App.aiProviders.length > 0)
+            return App.aiProviders
+        return [
+            { id: "groq", label: "Groq", base: "https://api.groq.com/openai/v1",
+              models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] },
+            { id: "zhipu", label: qsTr("智谱 GLM"), base: "https://open.bigmodel.cn/api/paas/v4",
+              models: ["glm-4-flash", "glm-4-plus"] },
+            { id: "siliconflow", label: qsTr("硅基流动"), base: "https://api.siliconflow.cn/v1",
+              models: ["Qwen/Qwen2.5-7B-Instruct", "deepseek-ai/DeepSeek-V3"] },
+            { id: "custom", label: qsTr("自定义"), base: "", models: [] }
+        ]
+    }
+    readonly property var currentAIProvider: {
+        var list = page.aiProviderList
+        if (page.aiProviderIndex < 0 || page.aiProviderIndex >= list.length) return list[0]
+        return list[page.aiProviderIndex]
+    }
+    readonly property bool aiEnabledValue: (typeof App !== "undefined" && App.aiEnabled !== undefined)
+                                           ? App.aiEnabled === true : page.aiLocalEnabled
+    readonly property string aiProviderLabel: (page.currentAIProvider.label !== undefined)
+                                               ? String(page.currentAIProvider.label) : ""
+    readonly property string aiBackendState: (typeof App !== "undefined" && App.aiState !== undefined)
+                                             ? String(App.aiState) : ""
+    readonly property string aiStatusText: {
+        if (page.aiBackendState === "testing") return qsTr("测试中…")
+        if (page.aiBackendState === "ok") return qsTr("连接成功")
+        if (page.aiBackendState === "error")
+            return (typeof App !== "undefined" && App.aiError !== undefined && String(App.aiError) !== "")
+                   ? String(App.aiError) : qsTr("连接失败")
+        if (page.aiTestText !== "") return page.aiTestText
+        if (typeof App !== "undefined" && App.aiConfigured === true) return qsTr("已配置")
+        return qsTr("未配置")
+    }
+    readonly property string aiStatusColor: {
+        if (page.aiBackendState === "ok" || page.aiTestKind === "ok") return AppTheme.accent
+        if (page.aiBackendState === "error" || page.aiTestKind === "error") return AppTheme.danger
+        return AppTheme.textTertiary
+    }
+
+    function initAI() {
+        if (typeof App !== "undefined" && App.aiProvider !== undefined) {
+            var providers = page.aiProviderList
+            for (var i = 0; i < providers.length; i++) {
+                if (String(providers[i].id) === String(App.aiProvider)) { page.aiProviderIndex = i; break }
+            }
+        }
+        var p = page.currentAIProvider
+        page.aiBaseDraft = (typeof App !== "undefined" && App.aiBase !== undefined && String(App.aiBase) !== "")
+                           ? String(App.aiBase) : String(p.base || "")
+        if (typeof App !== "undefined" && App.aiModel !== undefined && String(App.aiModel) !== "")
+            page.aiModelDraft = String(App.aiModel)
+        else if (p.models !== undefined && p.models.length > 0)
+            page.aiModelDraft = String(p.models[0])
+    }
+    function selectAIProvider(index) {
+        page.aiProviderIndex = index
+        page.aiProviderMenuOpen = false
+        var p = page.aiProviderList[index]
+        page.aiBaseDraft = (p.base !== undefined) ? String(p.base) : ""
+        page.aiModelDraft = (p.models !== undefined && p.models.length > 0) ? String(p.models[0]) : ""
+        if (typeof App !== "undefined" && typeof App.setAIProvider === "function")
+            App.setAIProvider(String(p.id))
+        if (typeof App !== "undefined" && typeof App.setAIBase === "function")
+            App.setAIBase(page.aiBaseDraft)
+        if (typeof App !== "undefined" && typeof App.setAIModel === "function")
+            App.setAIModel(page.aiModelDraft)
+    }
+    function saveAIModel() {
+        if (typeof App !== "undefined" && typeof App.setAIModel === "function")
+            App.setAIModel(page.aiModelDraft)
+    }
+    function saveAIBase() {
+        if (typeof App !== "undefined" && typeof App.setAIBase === "function")
+            App.setAIBase(page.aiBaseDraft)
+    }
+    function saveAIKey() {
+        if (typeof App !== "undefined" && typeof App.setAIKey === "function" && page.aiKeyDraft !== "")
+            App.setAIKey(page.aiKeyDraft)
+    }
+    function toggleAI() {
+        if (typeof App !== "undefined" && typeof App.setAIEnabled === "function") {
+            App.setAIEnabled(!page.aiEnabledValue)
+        } else {
+            page.aiLocalEnabled = !page.aiLocalEnabled
+        }
+    }
+    function testAIConnection() {
+        if (typeof App !== "undefined" && typeof App.testAIConnection === "function") {
+            page.aiTestKind = "testing"
+            page.aiTestText = ""
+            App.testAIConnection()
+        } else {
+            page.aiTestKind = "error"
+            page.aiTestText = qsTr("缺少测试接口（App.testAIConnection）")
+        }
+    }
+    Component.onCompleted: initAI()
+
     readonly property bool hasSleepBackend: (typeof App !== "undefined" && App.sleepScheduleItems !== undefined)
     readonly property var sleepItems: (typeof App !== "undefined" && App.sleepScheduleItems !== undefined)
                                       ? App.sleepScheduleItems : []
@@ -497,6 +606,334 @@ Item {
                         font.pixelSize: 11
                         font.family: C.numFont
                         wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            // ---------- v0.9 AI 助手 ----------
+            GlassCard {
+                width: parent.width
+                implicitHeight: aiColumn.implicitHeight + 30
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Item {
+                    id: aiCardBody
+                    anchors.fill: parent
+                    anchors.margins: 16
+
+                    Column {
+                        id: aiColumn
+                        width: parent.width
+                        spacing: 10
+
+                        Row {
+                            width: parent.width
+                            spacing: 8
+                            Glyph {
+                                anchors.verticalCenter: parent.verticalCenter
+                                kind: "sparkle"
+                                size: 16
+                                color: AppTheme.accent
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("AI 助手")
+                                color: AppTheme.textPrimary
+                                font.pixelSize: 15
+                                font.weight: Font.DemiBold
+                                font.family: C.numFont
+                            }
+                            Item { width: parent.width - 320; height: 1 }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: page.aiStatusText
+                                color: page.aiStatusColor
+                                font.pixelSize: 11
+                                font.family: C.numFont
+                                elide: Text.ElideRight
+                                width: 170
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            GlassSwitch {
+                                anchors.verticalCenter: parent.verticalCenter
+                                checked: page.aiEnabledValue
+                                onClicked: page.toggleAI()
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: qsTr("配置服务商与 API Key 后，可在右上角 AI 入口直接提问；Key 只保存在本机。")
+                            color: AppTheme.textTertiary
+                            font.pixelSize: 11
+                            font.family: C.numFont
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
+
+                        // 服务商
+                        Item {
+                            width: parent.width
+                            height: 36
+                            Text {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("服务商")
+                                color: AppTheme.textSecondary
+                                font.pixelSize: 12
+                                font.family: C.numFont
+                                width: 76
+                            }
+                            Item {
+                                id: aiProviderField
+                                anchors.left: parent.left
+                                anchors.leftMargin: 76
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 260
+                                height: 32
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 9
+                                    color: AppTheme.cardBgAlt
+                                    border.width: 1
+                                    border.color: aiProviderArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
+                                }
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: page.aiProviderLabel
+                                    color: AppTheme.textPrimary
+                                    font.pixelSize: 12
+                                    font.family: C.numFont
+                                }
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 10
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "▾"
+                                    color: AppTheme.textTertiary
+                                    font.pixelSize: 12
+                                }
+                                MouseArea {
+                                    id: aiProviderArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: page.aiProviderMenuOpen = !page.aiProviderMenuOpen
+                                }
+                            }
+                        }
+
+                        // 模型
+                        Item {
+                            width: parent.width
+                            height: 36
+                            Text {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("模型")
+                                color: AppTheme.textSecondary
+                                font.pixelSize: 12
+                                font.family: C.numFont
+                                width: 76
+                            }
+                            TextInput {
+                                id: aiModelInput
+                                anchors.left: parent.left
+                                anchors.leftMargin: 76
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 76
+                                height: 32
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: AppTheme.textPrimary
+                                selectionColor: AppTheme.accentSoft
+                                selectedTextColor: "#FFFFFF"
+                                font.pixelSize: 12
+                                font.family: C.numFont
+                                text: page.aiModelDraft
+                                onTextChanged: page.aiModelDraft = text
+                                onEditingFinished: page.saveAIModel()
+                                Rectangle {
+                                    anchors.fill: parent
+                                    z: -1
+                                    radius: 9
+                                    color: AppTheme.cardBgAlt
+                                    border.width: 1
+                                    border.color: aiModelInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                                }
+                            }
+                        }
+
+                        // API Base
+                        Item {
+                            width: parent.width
+                            height: 36
+                            Text {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("API Base")
+                                color: AppTheme.textSecondary
+                                font.pixelSize: 12
+                                font.family: C.numFont
+                                width: 76
+                            }
+                            TextInput {
+                                id: aiBaseInput
+                                anchors.left: parent.left
+                                anchors.leftMargin: 76
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 76
+                                height: 32
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: AppTheme.textPrimary
+                                selectionColor: AppTheme.accentSoft
+                                selectedTextColor: "#FFFFFF"
+                                font.pixelSize: 12
+                                font.family: C.monoFont
+                                text: page.aiBaseDraft
+                                onTextChanged: page.aiBaseDraft = text
+                                onEditingFinished: page.saveAIBase()
+                                Rectangle {
+                                    anchors.fill: parent
+                                    z: -1
+                                    radius: 9
+                                    color: AppTheme.cardBgAlt
+                                    border.width: 1
+                                    border.color: aiBaseInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                                }
+                            }
+                        }
+
+                        // API Key
+                        Item {
+                            width: parent.width
+                            height: 36
+                            Text {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("API Key")
+                                color: AppTheme.textSecondary
+                                font.pixelSize: 12
+                                font.family: C.numFont
+                                width: 76
+                            }
+                            TextInput {
+                                id: aiKeyInput
+                                anchors.left: parent.left
+                                anchors.leftMargin: 76
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 76
+                                height: 32
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: AppTheme.textPrimary
+                                selectionColor: AppTheme.accentSoft
+                                selectedTextColor: "#FFFFFF"
+                                font.pixelSize: 12
+                                font.family: C.monoFont
+                                echoMode: TextInput.Password
+                                passwordCharacter: "•"
+                                text: page.aiKeyDraft
+                                onTextChanged: page.aiKeyDraft = text
+                                onEditingFinished: page.saveAIKey()
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: aiKeyInput.text.length === 0
+                                    text: (typeof App !== "undefined" && App.aiHasKey === true)
+                                          ? qsTr("已保存，留空不修改") : qsTr("输入 API Key")
+                                    color: AppTheme.textTertiary
+                                    font.pixelSize: 12
+                                    font.family: C.numFont
+                                }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    z: -1
+                                    radius: 9
+                                    color: AppTheme.cardBgAlt
+                                    border.width: 1
+                                    border.color: aiKeyInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
+                                }
+                            }
+                        }
+
+                        Row {
+                            width: parent.width
+                            spacing: 10
+                            GlassButton {
+                                text: page.aiTestKind === "testing" ? qsTr("测试中…") : qsTr("测试连接")
+                                tone: "ghost"
+                                fontSize: 12
+                                padH: 16
+                                minHeight: 32
+                                enabled: page.aiTestKind !== "testing"
+                                onClicked: page.testAIConnection()
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 200
+                                text: page.aiStatusText
+                                color: page.aiStatusColor
+                                font.pixelSize: 11
+                                font.family: C.numFont
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+
+                    // 服务商下拉菜单
+                    Item {
+                        id: aiProviderPopup
+                        visible: page.aiProviderMenuOpen
+                        z: 30
+                        x: 76
+                        y: 96
+                        width: 260
+                        height: aiProviderListColumn.height + 8
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 12
+                            color: AppTheme.cardBg
+                            border.width: 1
+                            border.color: AppTheme.cardBorderStrong
+                        }
+
+                        Column {
+                            id: aiProviderListColumn
+                            x: 6
+                            y: 4
+                            width: parent.width - 12
+                            spacing: 2
+
+                            Repeater {
+                                model: page.aiProviderList
+                                delegate: Item {
+                                    width: parent.width
+                                    height: 32
+                                    Text {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: (modelData.label !== undefined) ? String(modelData.label) : String(modelData.id)
+                                        color: page.aiProviderIndex === index ? AppTheme.accent
+                                              : (providerItemArea.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                        font.pixelSize: 12
+                                        font.family: C.numFont
+                                    }
+                                    MouseArea {
+                                        id: providerItemArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: page.selectAIProvider(index)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
