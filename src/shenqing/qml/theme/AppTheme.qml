@@ -1,12 +1,24 @@
 pragma Singleton
 import QtQuick
+import "../components/Constants.js" as C
 
 // 全局主题状态：solid（纯色，默认）/ light（浅色）/ glass（液态玻璃）
-// Main.qml 里把 App.themeMode 同步到这里的 mode，所有组件按 mode 切换画法。
+// v0.12：fontScale / fontFamily / fs() 供全局字号与字体缩放使用。
 QtObject {
     id: t
 
     property string mode: "solid"
+
+    // ---------- 字体 ----------
+    property real fontScale: 1.0
+    property string fontFamily: C.numFont
+    property string navMode: "expanded"
+
+    function fs(basePixelSize) {
+        var value = Number(basePixelSize)
+        if (!isFinite(value)) value = 0
+        return Math.round(value * t.fontScale)
+    }
 
     readonly property bool solid: mode === "solid"
     readonly property bool light: mode === "light"

@@ -93,9 +93,9 @@ Item {
             anchors.centerIn: parent
             text: sheet.title
             color: AppTheme.textPrimary
-            font.pixelSize: 20
+            font.pixelSize: AppTheme.fs(20)
             font.weight: Font.Bold
-            font.family: C.numFont
+            font.family: AppTheme.fontFamily
         }
 
         GlassButton {
@@ -185,9 +185,9 @@ Item {
             text: sheet.deleteArmed ? qsTr("再次点击，确认删除") : sheet.deleteText
             color: AppTheme.light ? AppTheme.danger
                                   : (sheet.deleteArmed ? "#FF98A6" : "#FF8092")
-            font.pixelSize: 15
+            font.pixelSize: AppTheme.fs(15)
             font.weight: Font.DemiBold
-            font.family: C.numFont
+            font.family: AppTheme.fontFamily
         }
 
         MouseArea {

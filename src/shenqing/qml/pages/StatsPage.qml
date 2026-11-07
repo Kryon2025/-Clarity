@@ -159,16 +159,16 @@ Item {
                     Text {
                         text: qsTr("数据")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 30
+                        font.pixelSize: AppTheme.fs(30)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
                     Text {
                         text: qsTr("Patina · 看得见的专注，才守得住")
                         color: AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -187,8 +187,8 @@ Item {
                         anchors.centerIn: parent
                         text: qsTr("近 7 天 · %1 分钟").arg(Math.round(page.weekTotal))
                         color: AppTheme.textSecondary
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -226,8 +226,8 @@ Item {
                                 Text {
                                     text: String(modelData.label)
                                     color: AppTheme.textSecondary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -236,7 +236,7 @@ Item {
                                 Text {
                                     text: String(modelData.value)
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 30
+                                    font.pixelSize: AppTheme.fs(30)
                                     font.weight: Font.DemiBold
                                     font.family: C.monoFont
                                 }
@@ -244,8 +244,8 @@ Item {
                                     anchors.baseline: parent.children[0].baseline
                                     text: String(modelData.unit)
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -280,16 +280,16 @@ Item {
                         Text {
                             text: qsTr("最近 7 天")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 16
+                            font.pixelSize: AppTheme.fs(16)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                         Item { width: parent.width - 200; height: 1 }
                         Text {
                             text: qsTr("合计 %1 分钟").arg(Math.round(page.weekTotal))
                             color: AppTheme.textTertiary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
                     }
 
@@ -330,7 +330,7 @@ Item {
                                                             * (Number(modelData.minutes) || 0) / page.dayMax) + 2
                                         text: Math.round(Number(modelData.minutes) || 0)
                                         color: AppTheme.textTertiary
-                                        font.pixelSize: 10
+                                        font.pixelSize: AppTheme.fs(10)
                                         font.family: C.monoFont
                                         visible: (Number(modelData.minutes) || 0) > 0
                                     }
@@ -342,8 +342,8 @@ Item {
                                         text: (modelData.label !== undefined) ? String(modelData.label)
                                                                               : String(modelData.date || "")
                                         color: AppTheme.textTertiary
-                                        font.pixelSize: 11
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(11)
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
                             }
@@ -376,9 +376,9 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("应用使用时长")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 16
+                            font.pixelSize: AppTheme.fs(16)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
 
                         Item { width: parent.width - 320; height: 1 }
@@ -405,8 +405,8 @@ Item {
                                         anchors.centerIn: parent
                                         text: String(modelData)
                                         color: page.usageRange === index ? "#FFFFFF" : AppTheme.textSecondary
-                                        font.pixelSize: 12
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(12)
+                                        font.family: AppTheme.fontFamily
                                     }
                                     MouseArea {
                                         id: tabArea
@@ -453,8 +453,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: page.itemName(modelData) + " · " + page.usageMinutesText(page.itemMinutes(modelData))
                                     color: AppTheme.textSecondary
-                                    font.pixelSize: 11
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(11)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
                             }
@@ -519,8 +519,8 @@ Item {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: page.itemName(modelData)
                                         color: AppTheme.textPrimary
-                                        font.pixelSize: 13
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(13)
+                                        font.family: AppTheme.fontFamily
                                         elide: Text.ElideRight
                                     }
 
@@ -548,8 +548,8 @@ Item {
                                         horizontalAlignment: Text.AlignRight
                                         text: page.usageMinutesText(page.itemMinutes(modelData))
                                         color: AppTheme.textSecondary
-                                        font.pixelSize: 11
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(11)
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
                             }
@@ -560,8 +560,8 @@ Item {
                             width: parent.width
                             text: qsTr("还没有应用使用记录，开始一轮专注吧")
                             color: AppTheme.textTertiary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
                     }
                 }
@@ -587,16 +587,16 @@ Item {
                         Text {
                             text: qsTr("最近会话")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 16
+                            font.pixelSize: AppTheme.fs(16)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                         Item { width: parent.width - 200; height: 1 }
                         Text {
                             text: qsTr("今日 %1 次").arg(page.cardSessions)
                             color: AppTheme.textTertiary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
                     }
 
@@ -632,15 +632,15 @@ Item {
                                                    ? page.timeOf(modelData.startMs)
                                                    : String(modelData.date || ""))
                                             color: AppTheme.textPrimary
-                                            font.pixelSize: 13
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(13)
+                                            font.family: AppTheme.fontFamily
                                         }
                                         Text {
                                             text: (modelData.spaceName !== undefined && String(modelData.spaceName) !== "")
                                                   ? String(modelData.spaceName) : qsTr("专注")
                                             color: AppTheme.textTertiary
-                                            font.pixelSize: 11
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(11)
+                                            font.family: AppTheme.fontFamily
                                         }
                                     }
                                     Item { width: parent.width - 300; height: 1 }
@@ -649,8 +649,8 @@ Item {
                                         text: qsTr("%1 分钟").arg(Math.round(Number(modelData.minutes) || 0))
                                             + (modelData.completed === true ? " · " + qsTr("完成") : "")
                                         color: AppTheme.textSecondary
-                                        font.pixelSize: 12
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(12)
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
                             }
@@ -661,8 +661,8 @@ Item {
                             width: parent.width
                             text: qsTr("还没有专注记录，开始一轮吧。")
                             color: AppTheme.textTertiary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
                     }
 
@@ -670,8 +670,8 @@ Item {
                         width: parent.width
                         text: qsTr("更早的会话明细将在后续版本提供。")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -680,8 +680,8 @@ Item {
                 width: parent.width
                 text: qsTr("Patina · 统计卡片与图表结构已就绪，等待补充更多细节。")
                 color: AppTheme.textTertiary
-                font.pixelSize: 11
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
                 wrapMode: Text.WordWrap
             }
         }

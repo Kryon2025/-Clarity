@@ -36,16 +36,16 @@ Item {
                     Text {
                         text: qsTr("插件")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 30
+                        font.pixelSize: AppTheme.fs(30)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
                     Text {
                         text: qsTr("插件给深清加功能")
                         color: AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -75,9 +75,9 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("已安装插件")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 15
+                            font.pixelSize: AppTheme.fs(15)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
 
                         Text {
@@ -86,8 +86,8 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("（%1）").arg((App.plugins || []).length)
                             color: AppTheme.textTertiary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
 
                         GlassButton {
@@ -113,8 +113,8 @@ Item {
                         bottomPadding: 10
                         text: qsTr("还没有插件。把插件放到 %APPDATA%/ShenQing/plugins 后点「重新扫描」。")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                         wrapMode: Text.WordWrap
                         visible: (App.plugins || []).length === 0
                     }
@@ -151,16 +151,16 @@ Item {
                                     Text {
                                         text: String(modelData.name !== undefined ? modelData.name : qsTr("插件"))
                                         color: AppTheme.textPrimary
-                                        font.pixelSize: 14
+                                        font.pixelSize: AppTheme.fs(14)
                                         font.weight: Font.DemiBold
-                                        font.family: C.numFont
+                                        font.family: AppTheme.fontFamily
                                     }
                                     Text {
                                         anchors.baseline: parent.children[0].baseline
                                         text: "v" + String(modelData.version !== undefined ? modelData.version : "1.0")
                                         color: AppTheme.textTertiary
-                                        font.pixelSize: 11
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(11)
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
 
@@ -173,8 +173,8 @@ Item {
                                     }
                                     color: (modelData.error !== undefined && String(modelData.error).length > 0)
                                            ? "#FF8898" : AppTheme.textTertiary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
 
@@ -183,8 +183,8 @@ Item {
                                     visible: pluginRow.pluginState.length > 0
                                     text: pluginRow.pluginState
                                     color: AppTheme.accent
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
                             }

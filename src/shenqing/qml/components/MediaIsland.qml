@@ -138,8 +138,8 @@ Item {
                 width: parent.width - 30 - 10 - (island.hasMedia ? 44 : 0)
                 text: island.hasMedia ? island.mediaTitle : island.focusLine
                 color: AppTheme.textPrimary
-                font.pixelSize: 13
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(13)
+                font.family: AppTheme.fontFamily
                 elide: Text.ElideRight
             }
 
@@ -195,8 +195,8 @@ Item {
                                                     : (island.mediaAlbum !== "" ? island.mediaAlbum : qsTr("正在播放")))
                           : (island.focusSub !== "" ? island.focusSub : island.focusLine)
                     color: AppTheme.textTertiary
-                    font.pixelSize: 11
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
                     elide: Text.ElideRight
                 }
             }
@@ -205,9 +205,9 @@ Item {
                 width: parent.width
                 text: island.hasMedia ? island.mediaTitle : island.focusLine
                 color: AppTheme.textPrimary
-                font.pixelSize: 16
+                font.pixelSize: AppTheme.fs(16)
                 font.weight: Font.DemiBold
-                font.family: C.numFont
+                font.family: AppTheme.fontFamily
                 elide: Text.ElideRight
             }
 
@@ -219,8 +219,8 @@ Item {
                       : ""
                 visible: text !== ""
                 color: AppTheme.textSecondary
-                font.pixelSize: 12
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(12)
+                font.family: AppTheme.fontFamily
                 elide: Text.ElideRight
             }
 

@@ -337,17 +337,17 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("深清")
                     color: AppTheme.textPrimary
-                    font.pixelSize: 16
+                    font.pixelSize: AppTheme.fs(16)
                     font.weight: Font.DemiBold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                     font.letterSpacing: 1
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Clarity"
                     color: AppTheme.textTertiary
-                    font.pixelSize: 10
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(10)
+                    font.family: AppTheme.fontFamily
                 }
             }
 
@@ -375,9 +375,9 @@ Window {
             anchors.topMargin: 14
             text: qsTr("专注档位")
             color: AppTheme.textSecondary
-            font.pixelSize: 13
+            font.pixelSize: AppTheme.fs(13)
             font.weight: Font.DemiBold
-            font.family: C.numFont
+            font.family: AppTheme.fontFamily
             font.letterSpacing: 1
         }
 
@@ -474,8 +474,8 @@ Window {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: String(modelData.label)
                         color: AppTheme.textPrimary
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                     }
 
                     MouseArea {
@@ -507,9 +507,9 @@ Window {
             anchors.topMargin: 14
             text: qsTr("空间")
             color: AppTheme.textSecondary
-            font.pixelSize: 13
+            font.pixelSize: AppTheme.fs(13)
             font.weight: Font.DemiBold
-            font.family: C.numFont
+            font.family: AppTheme.fontFamily
             font.letterSpacing: 1
         }
 
@@ -570,16 +570,16 @@ Window {
                         anchors.verticalCenter: parent.verticalCenter
                         text: panel.spaceData.name !== undefined ? String(panel.spaceData.name) : qsTr("清空间")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 14
+                        font.pixelSize: AppTheme.fs(14)
                         font.weight: Font.DemiBold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: qsTr("%1 分钟").arg(panel.spaceMinutes)
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -587,8 +587,8 @@ Window {
                     width: spaceCard.width - 80
                     text: qsTr("点击以「%1」开始专注").arg(panel.modeLabel(panel.defaultModeValue))
                     color: AppTheme.textSecondary
-                    font.pixelSize: 11
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
                     elide: Text.ElideRight
                 }
             }
@@ -630,8 +630,8 @@ Window {
                   .arg(Math.round(Number(App.todayMinutes) || 0))
                   .arg(Math.round(Number(App.streakDays) || 0))
             color: AppTheme.textTertiary
-            font.pixelSize: 12
-            font.family: C.numFont
+            font.pixelSize: AppTheme.fs(12)
+            font.family: AppTheme.fontFamily
         }
 
         // ---- 中部留白：一句提示 ----
@@ -653,8 +653,8 @@ Window {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: qsTr("把注意力收回来")
                 color: AppTheme.textTertiary
-                font.pixelSize: 11
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
                 font.letterSpacing: 2
             }
         }

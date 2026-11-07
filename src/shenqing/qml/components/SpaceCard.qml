@@ -196,7 +196,7 @@ Item {
                 color: root.superCard ? "#FFFFFF" : AppTheme.textPrimary
                 font.pixelSize: root.superCard ? 27 : 20
                 font.weight: Font.Bold
-                font.family: C.numFont
+                font.family: AppTheme.fontFamily
                 elide: Text.ElideRight
                 width: parent.width
             }
@@ -207,7 +207,7 @@ Item {
                     text: qsTr("%1 分钟").arg(root.minutes)
                     color: root.superCard ? "#DCE7FF" : AppTheme.textSecondary
                     font.pixelSize: root.superCard ? 15 : 14
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                 }
                 Glyph {
                     anchors.verticalCenter: parent.verticalCenter

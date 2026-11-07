@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 import "../glass"
 import "Constants.js" as C
 
@@ -94,8 +95,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("新增空间")
                 color: "#A7B4CC"
-                font.pixelSize: 15
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(15)
+                font.family: AppTheme.fontFamily
             }
         }
     }

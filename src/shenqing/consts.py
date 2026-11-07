@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.11.2"
+APP_VERSION = "0.12.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,21 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.12.0",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "导航默认展开并收窄：展开 140px / 仅图标 64px，菜单项更紧凑、间距收紧，高亮只大一圈",
+            "设置 → 外观 新增导航展开方式：自动 / 始终展开 / 仅图标",
+            "设置 → 外观 新增全局字号（小 / 标准 / 大 / 特大）与字体选择，实时生效无需重启",
+        ],
+        "items_en": [
+            "Navigation is expanded by default and narrower: 140px expanded / 64px icons-only, tighter items and spacing, highlight only slightly larger",
+            "Appearance settings: navigation display mode (Auto / Always expanded / Icons only)",
+            "Appearance settings: global font size (Small / Standard / Large / Extra large) and font family, applied immediately without restart",
+        ],
+    },
     {
         "version": "0.11.2",
         "date": "2025-11-07",

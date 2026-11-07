@@ -413,9 +413,9 @@ Window {
                                 anchors.centerIn: parent
                                 text: "深"
                                 color: "#04222B"
-                                font.pixelSize: 22
+                                font.pixelSize: AppTheme.fs(22)
                                 font.weight: Font.Bold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                         }
                         Image {
@@ -445,14 +445,14 @@ Window {
                         Text {
                             text: qsTr("来自深清")
                             color: "#B3DDE8"
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
                         Text {
                             text: overlay.dateRange
                             color: "#8FB7C6"
-                            font.pixelSize: 11
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
                         }
                     }
 
@@ -468,9 +468,9 @@ Window {
                     width: parent.width
                     text: overlay.displaySpace
                     color: "#EFF9FF"
-                    font.pixelSize: 26
+                    font.pixelSize: AppTheme.fs(26)
                     font.weight: Font.Bold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                     elide: Text.ElideRight
                 }
 
@@ -478,8 +478,8 @@ Window {
                     width: parent.width
                     text: overlay.quote
                     color: "#C7E3EC"
-                    font.pixelSize: 14
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(14)
+                    font.family: AppTheme.fontFamily
                     wrapMode: Text.WordWrap
                     lineHeight: 1.4
                 }
@@ -496,8 +496,8 @@ Window {
                 Text {
                     text: qsTr("本次专注")
                     color: "#8FB7C6"
-                    font.pixelSize: 12
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(12)
+                    font.family: AppTheme.fontFamily
                     font.letterSpacing: 1
                 }
 
@@ -514,8 +514,8 @@ Window {
                         anchors.baseline: parent.children[0].baseline
                         text: qsTr("分钟")
                         color: "#CFEAF2"
-                        font.pixelSize: 18
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(18)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -541,8 +541,8 @@ Window {
                     anchors.centerIn: parent
                     text: qsTr("编辑背景")
                     color: "#E8F6FA"
-                    font.pixelSize: 11
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
                 }
                 MouseArea {
                     id: editBgArea
@@ -636,8 +636,8 @@ Window {
                     anchors.centerIn: parent
                     text: qsTr("分享")
                     color: "#EAF8FB"
-                    font.pixelSize: 13
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(13)
+                    font.family: AppTheme.fontFamily
                 }
                 MouseArea {
                     id: shareArea
@@ -663,8 +663,8 @@ Window {
                     anchors.centerIn: parent
                     text: qsTr("延长 20 分钟")
                     color: "#EAF8FB"
-                    font.pixelSize: 13
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(13)
+                    font.family: AppTheme.fontFamily
                 }
                 MouseArea {
                     id: extendArea
@@ -698,8 +698,8 @@ Window {
                 anchors.centerIn: parent
                 text: overlay.toastText
                 color: "#EAF8FB"
-                font.pixelSize: 12
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(12)
+                font.family: AppTheme.fontFamily
             }
         }
     }

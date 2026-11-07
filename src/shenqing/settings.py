@@ -29,6 +29,9 @@ DEFAULTS: dict[str, Any] = {
     "ai_reasoning_enabled": True,   # 思考模式（DeepSeek thinking / OpenAI reasoning_effort）
     "ai_web_search_enabled": False,  # 联网检索（DeepSeek / GLM）
     "ai_reasoning_effort": "",       # 可选：low / medium / high（OpenAI/DeepSeek）
+    "ui_font_family": "",            # 界面字体（空 = 内置默认字体）
+    "ui_font_scale": 1.0,            # 界面字号缩放 0.8-1.4（步进 0.05）
+    "nav_mode": "expanded",          # 导航模式：auto / expanded / icons / custom
     "volume_panel": 50,     # dock 设置面板上次的系统音量（0-100）
     "onboarding_done": False,  # 首次使用引导是否完成
     "countdown_date": "",      # 倒数日目标日期 YYYY-MM-DD（空=不显示）

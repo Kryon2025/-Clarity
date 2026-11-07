@@ -36,7 +36,7 @@ Item {
             color: "#F4F8FF"
             font.pixelSize: Math.round(root.size * 0.42)
             font.weight: Font.DemiBold
-            font.family: C.numFont
+            font.family: AppTheme.fontFamily
         }
     }
 

@@ -368,9 +368,9 @@ Item {
                     Text {
                         text: qsTr("空间")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 30
+                        font.pixelSize: AppTheme.fs(30)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
 
@@ -379,8 +379,8 @@ Item {
                               ? qsTr("专注中 · %1 · 剩余 %2").arg(page.modeLabel(App.sessionLevel)).arg(String(App.remainingText))
                               : qsTr("每个档位可建多个空间，各自保存时长与白名单")
                         color: page.busy ? AppTheme.accent : AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -453,9 +453,9 @@ Item {
                                 color: tabItem.selected ? AppTheme.textPrimary
                                                        : (tabArea.containsMouse ? AppTheme.textSecondary
                                                                                 : AppTheme.textTertiary)
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fs(16)
                                 font.weight: tabItem.selected ? Font.DemiBold : Font.Medium
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                                 font.letterSpacing: 1
                                 Behavior on color {
                                     enabled: page.animationsEnabled
@@ -737,9 +737,9 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: spaceCard.spaceName
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 24
+                                font.pixelSize: AppTheme.fs(24)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                                 elide: Text.ElideRight
                                 maximumLineCount: 1
                             }
@@ -763,8 +763,8 @@ Item {
                                     color: AppTheme.textPrimary
                                     selectionColor: AppTheme.accentSoft
                                     selectedTextColor: "#FFFFFF"
-                                    font.pixelSize: 18
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(18)
+                                    font.family: AppTheme.fontFamily
                                     activeFocusOnTab: true
                                     onActiveFocusChanged: {
                                         if (!activeFocus && spaceCard.renameActive)
@@ -800,8 +800,8 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: qsTr("%1 分钟").arg(spaceCard.spaceMinutes)
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 13
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(13)
+                                font.family: AppTheme.fontFamily
                             }
 
                             Glyph {
@@ -868,8 +868,8 @@ Item {
                                     width: parent.width / 2
                                     text: qsTr("%1 分钟（最短即体验）").arg(Math.round(minutesSlider.from))
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 10
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(10)
+                                    font.family: AppTheme.fontFamily
                                 }
 
                                 Text {
@@ -877,8 +877,8 @@ Item {
                                     horizontalAlignment: Text.AlignRight
                                     text: qsTr("%1 分钟").arg(Math.round(minutesSlider.to))
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 10
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(10)
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
                         }
@@ -914,8 +914,8 @@ Item {
                                              : qsTr("白名单 · 未设置"))
                                     color: spaceCard.spaceMode !== "heavy" && whitelistArea.containsMouse
                                            ? AppTheme.textSecondary : AppTheme.textTertiary
-                                    font.pixelSize: 11
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(11)
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -973,9 +973,9 @@ Item {
                                 anchors.centerIn: parent
                                 text: spaceCard.spaceMode === "heavy" ? qsTr("开始深清") : qsTr("开始")
                                 color: "#08222B"
-                                font.pixelSize: 14
+                                font.pixelSize: AppTheme.fs(14)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
 
                             MouseArea {
@@ -1079,8 +1079,8 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: qsTr("新增空间")
                             color: addCard.hovered ? AppTheme.textSecondary : AppTheme.textTertiary
-                            font.pixelSize: 14
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(14)
+                            font.family: AppTheme.fontFamily
                             font.letterSpacing: 1
                         }
                     }
@@ -1100,8 +1100,8 @@ Item {
                 width: parent.width
                 text: qsTr("「浅清」「覆清」可以新增多个空间，各自保存名称、锁定时长与白名单；「深清」固定一个空间，不可新增或删除，只能改时长，且不设置白名单。")
                 color: AppTheme.textTertiary
-                font.pixelSize: 11
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
                 wrapMode: Text.WordWrap
             }
         }
@@ -1188,9 +1188,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: page.infoTitle(page.infoMode)
                         color: AppTheme.textPrimary
-                        font.pixelSize: 17
+                        font.pixelSize: AppTheme.fs(17)
                         font.weight: Font.DemiBold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -1220,8 +1220,8 @@ Item {
                             width: parent.width - 14
                             text: String(modelData)
                             color: AppTheme.textSecondary
-                            font.pixelSize: 13
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(13)
+                            font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                             lineHeight: 1.3
                         }
@@ -1232,8 +1232,8 @@ Item {
                     width: parent.width
                     text: qsTr("点击空白处或按 Esc 关闭")
                     color: AppTheme.textTertiary
-                    font.pixelSize: 11
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
                 }
             }
         }

@@ -71,16 +71,16 @@ Item {
                     Text {
                         text: qsTr("主题")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 30
+                        font.pixelSize: AppTheme.fs(30)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
                     Text {
                         text: qsTr("外观风格会立即生效；顶栏、导航与卡片都会跟着切换")
                         color: AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -100,8 +100,8 @@ Item {
                     Text {
                         text: qsTr("当前：%1").arg(page.currentThemeLabel())
                         color: AppTheme.textSecondary
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -270,9 +270,9 @@ Item {
                                 Text {
                                     text: String(modelData.label)
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 17
+                                    font.pixelSize: AppTheme.fs(17)
                                     font.weight: Font.DemiBold
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                 }
 
                                 Rectangle {
@@ -290,8 +290,8 @@ Item {
                                         anchors.centerIn: parent
                                         text: qsTr("实验性")
                                         color: AppTheme.glass ? "#FFD9A6" : "#9A5B12"
-                                        font.pixelSize: 9
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(9)
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
 
@@ -310,8 +310,8 @@ Item {
                                         anchors.centerIn: parent
                                         text: qsTr("使用中")
                                         color: AppTheme.accent
-                                        font.pixelSize: 9
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(9)
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
                             }
@@ -320,8 +320,8 @@ Item {
                                 width: parent.width
                                 text: modelData.desc !== undefined ? String(modelData.desc) : ""
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
 
@@ -329,8 +329,8 @@ Item {
                                 visible: String(modelData.value) === "glass"
                                 text: qsTr("低配设备建议使用纯色，性能更稳")
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 10
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(10)
+                                font.family: AppTheme.fontFamily
                             }
                         }
 

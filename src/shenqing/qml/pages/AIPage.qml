@@ -300,8 +300,8 @@ Item {
                     anchors.left: parent.left
                     anchors.bottom: parent.bottom
                     spacing: 4
-                    Text { text: qsTr("AI"); color: AppTheme.textPrimary; font.pixelSize: 28; font.weight: Font.Bold; font.family: C.numFont }
-                    Text { text: qsTr("对话、历史与用量都在这里"); color: AppTheme.textSecondary; font.pixelSize: 12; font.family: C.numFont }
+                    Text { text: qsTr("AI"); color: AppTheme.textPrimary; font.pixelSize: AppTheme.fs(28); font.weight: Font.Bold; font.family: AppTheme.fontFamily }
+                    Text { text: qsTr("对话、历史与用量都在这里"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(12); font.family: AppTheme.fontFamily }
                 }
                 Rectangle {
                     anchors.right: parent.right
@@ -318,8 +318,8 @@ Item {
                         anchors.centerIn: parent
                         text: qsTr("今日 %1 tokens · %2%3（估算）").arg(page.todayTokens).arg(page.costSymbol).arg(Number(page.todayCost).toFixed(2))
                         color: AppTheme.textSecondary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -362,8 +362,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: (modelData.title !== undefined) ? String(modelData.title) : qsTr("新会话")
                                     color: selected ? AppTheme.accent : AppTheme.textSecondary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
                                 Item {
@@ -384,8 +384,8 @@ Item {
                             visible: page.conversations.length === 0
                             text: qsTr("还没有会话，点右侧「新对话」开始")
                             color: AppTheme.textTertiary
-                            font.pixelSize: 11
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -397,7 +397,7 @@ Item {
                     width: 96
                     height: 34
                     Rectangle { anchors.fill: parent; radius: 17; color: newConversationArea.containsMouse ? AppTheme.accentSoft : AppTheme.accent }
-                    Text { anchors.centerIn: parent; text: qsTr("＋ 新对话"); color: "#FFFFFF"; font.pixelSize: 12; font.weight: Font.DemiBold; font.family: C.numFont }
+                    Text { anchors.centerIn: parent; text: qsTr("＋ 新对话"); color: "#FFFFFF"; font.pixelSize: AppTheme.fs(12); font.weight: Font.DemiBold; font.family: AppTheme.fontFamily }
                     MouseArea { id: newConversationArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.newConversation() }
                 }
             }
@@ -439,39 +439,39 @@ Item {
                                         anchors.leftMargin: 10
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 6
-                                        Text { id: providerButtonText; text: page.providerLabel; color: AppTheme.textPrimary; font.pixelSize: 12; font.family: C.numFont }
+                                        Text { id: providerButtonText; text: page.providerLabel; color: AppTheme.textPrimary; font.pixelSize: AppTheme.fs(12); font.family: AppTheme.fontFamily }
                                         Rectangle {
                                             visible: page.freeProvider
                                             width: 40
                                             height: 16
                                             radius: 8
                                             color: "#1FA36B"
-                                            Text { anchors.centerIn: parent; text: qsTr("免配置"); color: "#FFFFFF"; font.pixelSize: 9; font.family: C.numFont }
+                                            Text { anchors.centerIn: parent; text: qsTr("免配置"); color: "#FFFFFF"; font.pixelSize: AppTheme.fs(9); font.family: AppTheme.fontFamily }
                                         }
                                     }
-                                    Text { anchors.right: parent.right; anchors.rightMargin: 9; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: 11 }
+                                    Text { anchors.right: parent.right; anchors.rightMargin: 9; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: AppTheme.fs(11) }
                                     MouseArea { id: providerButtonArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.openProviderMenu(providerButton) }
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: (page.reasoningSupported ? qsTr("思考") : "") + (page.reasoningSupported && page.webSupported ? " · " : "") + (page.webSupported ? qsTr("联网") : "")
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 10
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(10)
+                                    font.family: AppTheme.fontFamily
                                 }
                                 Item { width: parent.width - 520; height: 1 }
                                 Row {
                                     visible: page.reasoningSupported
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 5
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("思考"); color: page.reasoningEnabled ? AppTheme.accent : AppTheme.textTertiary; font.pixelSize: 11; font.family: C.numFont }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("思考"); color: page.reasoningEnabled ? AppTheme.accent : AppTheme.textTertiary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily }
                                     GlassSwitch { anchors.verticalCenter: parent.verticalCenter; checked: page.reasoningEnabled; onClicked: page.toggleReasoning() }
                                 }
                                 Row {
                                     visible: page.webSupported
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 5
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("联网"); color: page.webEnabled ? AppTheme.accent : AppTheme.textTertiary; font.pixelSize: 11; font.family: C.numFont }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("联网"); color: page.webEnabled ? AppTheme.accent : AppTheme.textTertiary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily }
                                     GlassSwitch { anchors.verticalCenter: parent.verticalCenter; checked: page.webEnabled; onClicked: page.toggleWebSearch() }
                                 }
                                 Item {
@@ -541,8 +541,8 @@ Item {
                                                                 anchors.verticalCenter: parent.verticalCenter
                                                                 text: (page.expandedReasoningKey === reasoningKey ? "▾ " : "▸ ") + qsTr("思考过程")
                                                                 color: AppTheme.textTertiary
-                                                                font.pixelSize: 10
-                                                                font.family: C.numFont
+                                                                font.pixelSize: AppTheme.fs(10)
+                                                                font.family: AppTheme.fontFamily
                                                             }
                                                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.toggleReasoningMessage(index) }
                                                         }
@@ -559,7 +559,7 @@ Item {
                                                                 width: parent.width - 16
                                                                 text: reasoningText
                                                                 color: AppTheme.textTertiary
-                                                                font.pixelSize: 10
+                                                                font.pixelSize: AppTheme.fs(10)
                                                                 font.family: C.monoFont
                                                                 wrapMode: Text.WordWrap
                                                             }
@@ -569,8 +569,8 @@ Item {
                                                             width: parent.width
                                                             text: page.messageContent(modelData)
                                                             color: AppTheme.textPrimary
-                                                            font.pixelSize: 12
-                                                            font.family: C.numFont
+                                                            font.pixelSize: AppTheme.fs(12)
+                                                            font.family: AppTheme.fontFamily
                                                             wrapMode: Text.WordWrap
                                                             lineHeight: 1.5
                                                         }
@@ -578,14 +578,14 @@ Item {
                                                             visible: modelData.tokens !== undefined && Number(modelData.tokens) > 0
                                                             text: qsTr("%1 tokens").arg(modelData.tokens !== undefined ? modelData.tokens : 0)
                                                             color: AppTheme.textTertiary
-                                                            font.pixelSize: 9
-                                                            font.family: C.numFont
+                                                            font.pixelSize: AppTheme.fs(9)
+                                                            font.family: AppTheme.fontFamily
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                        Text { visible: page.messageCount === 0 && page.configured && page.chatState === "loading"; text: qsTr("思考中…"); color: AppTheme.textSecondary; font.pixelSize: 12; font.family: C.numFont }
+                                        Text { visible: page.messageCount === 0 && page.configured && page.chatState === "loading"; text: qsTr("思考中…"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(12); font.family: AppTheme.fontFamily }
                                         TextEdit {
                                             visible: page.messageCount === 0 && page.configured && page.chatState === "ok"
                                             width: parent.width
@@ -596,8 +596,8 @@ Item {
                                             color: AppTheme.textPrimary
                                             selectionColor: AppTheme.accentSoft
                                             selectedTextColor: "#FFFFFF"
-                                            font.pixelSize: 12
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(12)
+                                            font.family: AppTheme.fontFamily
                                             selectByMouse: true
                                         }
                                         Text {
@@ -605,8 +605,8 @@ Item {
                                             width: parent.width
                                             text: page.chatError !== "" ? page.chatError : qsTr("AI 请求失败")
                                             color: AppTheme.danger
-                                            font.pixelSize: 11
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(11)
+                                            font.family: AppTheme.fontFamily
                                             wrapMode: Text.WordWrap
                                         }
                                         Text {
@@ -615,8 +615,8 @@ Item {
                                             text: page.configured ? qsTr("空会话：问问专注方法，或让它帮你整理今天的任务。")
                                                                   : qsTr("还没有配置 AI。点右上角齿轮填写服务商与 Key，或选择「免费直连（免配置）」。")
                                             color: AppTheme.textTertiary
-                                            font.pixelSize: 11
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(11)
+                                            font.family: AppTheme.fontFamily
                                             wrapMode: Text.WordWrap
                                         }
                                     }
@@ -645,8 +645,8 @@ Item {
                                         color: AppTheme.textPrimary
                                         selectionColor: AppTheme.accentSoft
                                         selectedTextColor: "#FFFFFF"
-                                        font.pixelSize: 12
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(12)
+                                        font.family: AppTheme.fontFamily
                                         enabled: page.configured
                                         text: page.query
                                         onTextChanged: page.query = text
@@ -656,8 +656,8 @@ Item {
                                             visible: chatInput.text.length === 0
                                             text: page.configured ? qsTr("问点什么…（Enter 发送）") : qsTr("请先配置 AI")
                                             color: AppTheme.textTertiary
-                                            font.pixelSize: 12
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(12)
+                                            font.family: AppTheme.fontFamily
                                         }
                                     }
                                 }
@@ -665,12 +665,12 @@ Item {
                                     width: 82
                                     height: 38
                                     Rectangle { anchors.fill: parent; radius: 19; color: sendArea.containsMouse ? AppTheme.accentSoft : AppTheme.accent; opacity: page.configured ? 1 : 0.4 }
-                                    Text { anchors.centerIn: parent; text: qsTr("发送"); color: "#FFFFFF"; font.pixelSize: 12; font.weight: Font.DemiBold; font.family: C.numFont }
+                                    Text { anchors.centerIn: parent; text: qsTr("发送"); color: "#FFFFFF"; font.pixelSize: AppTheme.fs(12); font.weight: Font.DemiBold; font.family: AppTheme.fontFamily }
                                     MouseArea { id: sendArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: page.configured; onClicked: page.send() }
                                 }
                             }
 
-                            Text { width: parent.width; visible: page.usageText() !== ""; text: page.usageText(); color: AppTheme.textTertiary; font.pixelSize: 10; font.family: C.numFont }
+                            Text { width: parent.width; visible: page.usageText() !== ""; text: page.usageText(); color: AppTheme.textTertiary; font.pixelSize: AppTheme.fs(10); font.family: AppTheme.fontFamily }
                         }
                     }
                 }
@@ -695,7 +695,7 @@ Item {
                             spacing: 8
                             Row {
                                 width: parent.width
-                                Text { text: qsTr("AI 设置"); color: AppTheme.textPrimary; font.pixelSize: 14; font.weight: Font.DemiBold; font.family: C.numFont }
+                                Text { text: qsTr("AI 设置"); color: AppTheme.textPrimary; font.pixelSize: AppTheme.fs(14); font.weight: Font.DemiBold; font.family: AppTheme.fontFamily }
                                 Item { width: parent.width - 130; height: 1 }
                                 GlassSwitch {
                                     checked: (typeof App !== "undefined" && App.aiEnabled !== undefined) ? App.aiEnabled === true : false
@@ -707,14 +707,14 @@ Item {
                                 text: page.freeProvider ? qsTr("免配置服务商：无需 API Key，选好模型即可直接对话。")
                                                         : qsTr("Key 只保存在本机；模型列表可自动获取。")
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 10
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(10)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
                             Item {
                                 width: parent.width
                                 height: 30
-                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("服务商"); color: AppTheme.textSecondary; font.pixelSize: 11; font.family: C.numFont; width: 52 }
+                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("服务商"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily; width: 52 }
                                 Item {
                                     id: configProviderField
                                     anchors.left: parent.left
@@ -723,15 +723,15 @@ Item {
                                     height: 28
                                     anchors.verticalCenter: parent.verticalCenter
                                     Rectangle { anchors.fill: parent; radius: 8; color: AppTheme.cardBgAlt; border.width: 1; border.color: configProviderArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder }
-                                    Text { anchors.left: parent.left; anchors.leftMargin: 9; anchors.verticalCenter: parent.verticalCenter; text: page.providerLabel; color: AppTheme.textPrimary; font.pixelSize: 11; font.family: C.numFont }
-                                    Text { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: 11 }
+                                    Text { anchors.left: parent.left; anchors.leftMargin: 9; anchors.verticalCenter: parent.verticalCenter; text: page.providerLabel; color: AppTheme.textPrimary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily }
+                                    Text { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: AppTheme.fs(11) }
                                     MouseArea { id: configProviderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.openProviderMenu(configProviderField) }
                                 }
                             }
                             Row {
                                 width: parent.width
                                 spacing: 6
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("模型"); color: AppTheme.textSecondary; font.pixelSize: 11; font.family: C.numFont; width: 46 }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: qsTr("模型"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily; width: 46 }
                                 TextInput {
                                     id: modelInput
                                     width: parent.width - 46 - 24 - 52 - 18
@@ -740,7 +740,7 @@ Item {
                                     color: AppTheme.textPrimary
                                     selectionColor: AppTheme.accentSoft
                                     selectedTextColor: "#FFFFFF"
-                                    font.pixelSize: 10
+                                    font.pixelSize: AppTheme.fs(10)
                                     font.family: C.monoFont
                                     text: page.modelDraft
                                     onTextChanged: page.modelDraft = text
@@ -750,14 +750,14 @@ Item {
                                 Item {
                                     width: 24
                                     height: 28
-                                    Text { anchors.centerIn: parent; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: 11 }
+                                    Text { anchors.centerIn: parent; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: AppTheme.fs(11) }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.openModelMenu(modelInput) }
                                 }
                                 Item {
                                     width: 52
                                     height: 28
                                     Rectangle { anchors.fill: parent; radius: 8; color: refreshArea.containsMouse ? AppTheme.cardBgAlt : "transparent"; border.width: 1; border.color: AppTheme.cardBorder }
-                                    Text { anchors.centerIn: parent; text: page.modelsState === "loading" ? qsTr("获取中") : qsTr("刷新"); color: refreshArea.containsMouse ? AppTheme.accent : AppTheme.textSecondary; font.pixelSize: 10; font.family: C.numFont }
+                                    Text { anchors.centerIn: parent; text: page.modelsState === "loading" ? qsTr("获取中") : qsTr("刷新"); color: refreshArea.containsMouse ? AppTheme.accent : AppTheme.textSecondary; font.pixelSize: AppTheme.fs(10); font.family: AppTheme.fontFamily }
                                     MouseArea { id: refreshArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.refreshModels() }
                                 }
                             }
@@ -766,15 +766,15 @@ Item {
                                 visible: page.modelsHint !== ""
                                 text: page.modelsHint
                                 color: page.modelsState === "error" || page.localModelsError !== "" ? AppTheme.danger : AppTheme.textTertiary
-                                font.pixelSize: 9
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(9)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
                             Item {
                                 visible: !page.freeProvider
                                 width: parent.width
                                 height: 30
-                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("API Base"); color: AppTheme.textSecondary; font.pixelSize: 11; font.family: C.numFont; width: 52 }
+                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("API Base"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily; width: 52 }
                                 TextInput {
                                     id: baseInput
                                     anchors.left: parent.left
@@ -786,7 +786,7 @@ Item {
                                     color: AppTheme.textPrimary
                                     selectionColor: AppTheme.accentSoft
                                     selectedTextColor: "#FFFFFF"
-                                    font.pixelSize: 9
+                                    font.pixelSize: AppTheme.fs(9)
                                     font.family: C.monoFont
                                     text: page.baseDraft
                                     onTextChanged: page.baseDraft = text
@@ -798,7 +798,7 @@ Item {
                                 visible: !page.freeProvider
                                 width: parent.width
                                 height: 30
-                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("API Key"); color: AppTheme.textSecondary; font.pixelSize: 11; font.family: C.numFont; width: 52 }
+                                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("API Key"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily; width: 52 }
                                 TextInput {
                                     id: keyInput
                                     anchors.left: parent.left
@@ -810,7 +810,7 @@ Item {
                                     color: AppTheme.textPrimary
                                     selectionColor: AppTheme.accentSoft
                                     selectedTextColor: "#FFFFFF"
-                                    font.pixelSize: 11
+                                    font.pixelSize: AppTheme.fs(11)
                                     font.family: C.monoFont
                                     echoMode: TextInput.Password
                                     passwordCharacter: "•"
@@ -822,8 +822,8 @@ Item {
                                         visible: keyInput.text.length === 0
                                         text: (typeof App !== "undefined" && App.aiHasKey === true) ? qsTr("已保存，留空不修改") : qsTr("输入 API Key")
                                         color: AppTheme.textTertiary
-                                        font.pixelSize: 10
-                                        font.family: C.numFont
+                                        font.pixelSize: AppTheme.fs(10)
+                                        font.family: AppTheme.fontFamily
                                     }
                                     Rectangle { anchors.fill: parent; z: -1; radius: 8; color: AppTheme.cardBgAlt; border.width: 1; border.color: keyInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder }
                                 }
@@ -836,7 +836,7 @@ Item {
                                     width: 78
                                     height: 28
                                     Rectangle { anchors.fill: parent; radius: 8; color: testArea.containsMouse ? AppTheme.cardBgAlt : "transparent"; border.width: 1; border.color: AppTheme.cardBorder }
-                                    Text { anchors.centerIn: parent; text: page.testKind === "testing" ? qsTr("测试中…") : qsTr("测试连接"); color: AppTheme.textSecondary; font.pixelSize: 10; font.family: C.numFont }
+                                    Text { anchors.centerIn: parent; text: page.testKind === "testing" ? qsTr("测试中…") : qsTr("测试连接"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(10); font.family: AppTheme.fontFamily }
                                     MouseArea { id: testArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.testConnection() }
                                 }
                                 Text {
@@ -844,8 +844,8 @@ Item {
                                     width: parent.width - 90
                                     text: page.testText !== "" ? page.testText : (page.testKind === "error" ? qsTr("连接失败") : "")
                                     color: page.testKind === "error" ? AppTheme.danger : AppTheme.textTertiary
-                                    font.pixelSize: 9
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(9)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
                             }
@@ -858,15 +858,15 @@ Item {
                                     width: parent.width - 90
                                     text: qsTr("用量统计：今日 %1 tokens · %2%3（估算）").arg(page.todayTokens).arg(page.costSymbol).arg(Number(page.todayCost).toFixed(2))
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 9
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(9)
+                                    font.family: AppTheme.fontFamily
                                     wrapMode: Text.WordWrap
                                 }
                                 Item {
                                     width: 80
                                     height: 26
                                     Rectangle { anchors.fill: parent; radius: 8; color: resetArea.containsMouse ? AppTheme.cardBgAlt : "transparent"; border.width: 1; border.color: AppTheme.cardBorder }
-                                    Text { anchors.centerIn: parent; text: qsTr("重置"); color: AppTheme.textSecondary; font.pixelSize: 9; font.family: C.numFont }
+                                    Text { anchors.centerIn: parent; text: qsTr("重置"); color: AppTheme.textSecondary; font.pixelSize: AppTheme.fs(9); font.family: AppTheme.fontFamily }
                                     MouseArea { id: resetArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.resetUsage() }
                                 }
                             }
@@ -910,14 +910,14 @@ Item {
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 6
-                        Text { text: String(modelData.label); color: page.providerIndex === index ? AppTheme.accent : AppTheme.textSecondary; font.pixelSize: 11; font.family: C.numFont }
+                        Text { text: String(modelData.label); color: page.providerIndex === index ? AppTheme.accent : AppTheme.textSecondary; font.pixelSize: AppTheme.fs(11); font.family: AppTheme.fontFamily }
                         Rectangle {
                             visible: isFree
                             width: 40
                             height: 15
                             radius: 7
                             color: "#1FA36B"
-                            Text { anchors.centerIn: parent; text: qsTr("免配置"); color: "#FFFFFF"; font.pixelSize: 8; font.family: C.numFont }
+                            Text { anchors.centerIn: parent; text: qsTr("免配置"); color: "#FFFFFF"; font.pixelSize: AppTheme.fs(8); font.family: AppTheme.fontFamily }
                         }
                     }
                     MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.selectProvider(index) }
@@ -958,7 +958,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: String(modelData)
                             color: page.modelDraft === String(modelData) ? AppTheme.accent : AppTheme.textSecondary
-                            font.pixelSize: 10
+                            font.pixelSize: AppTheme.fs(10)
                             font.family: C.monoFont
                             elide: Text.ElideRight
                         }

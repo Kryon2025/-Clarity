@@ -183,9 +183,9 @@ Window {
                         horizontalAlignment: Text.AlignHCenter
                         text: overlay.pages[overlay.pageIndex].title
                         color: AppTheme.textPrimary
-                        font.pixelSize: 28
+                        font.pixelSize: AppTheme.fs(28)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
 
@@ -195,8 +195,8 @@ Window {
                         horizontalAlignment: Text.AlignHCenter
                         text: overlay.pages[overlay.pageIndex].body
                         color: AppTheme.textSecondary
-                        font.pixelSize: 15
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(15)
+                        font.family: AppTheme.fontFamily
                         wrapMode: Text.WordWrap
                         lineHeight: 1.5
                     }
@@ -222,8 +222,8 @@ Window {
                         anchors.centerIn: parent
                         text: qsTr("跳过")
                         color: skipArea.containsMouse ? AppTheme.textSecondary : AppTheme.textTertiary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                     MouseArea {
                         id: skipArea

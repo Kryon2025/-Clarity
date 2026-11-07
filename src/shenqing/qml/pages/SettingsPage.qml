@@ -19,6 +19,60 @@ Item {
     property string newSleepTime: "23:30"
     property int clockClickCount: 0
 
+    // ---------- v0.12 外观：字号 / 字体 / 导航展开方式 ----------
+    property bool fontMenuOpen: false
+    readonly property var fontFamilyList: {
+        var out = [{ value: "", label: qsTr("默认") }]
+        if (typeof App !== "undefined" && App.uiFontFamilies !== undefined && App.uiFontFamilies !== null
+                && App.uiFontFamilies.length > 0) {
+            for (var i = 0; i < App.uiFontFamilies.length; i++) {
+                var family = String(App.uiFontFamilies[i])
+                if (family !== "" && family.indexOf("@") !== 0)
+                    out.push({ value: family, label: family })
+            }
+            return out
+        }
+        out.push({ value: "Microsoft YaHei UI", label: qsTr("微软雅黑") })
+        out.push({ value: "Segoe UI", label: "Segoe UI" })
+        out.push({ value: "SimSun", label: qsTr("宋体") })
+        return out
+    }
+    readonly property string currentFontValue: (typeof App !== "undefined" && App.uiFontFamily !== undefined)
+                                                ? String(App.uiFontFamily) : ""
+    readonly property string currentFontLabel: {
+        var list = page.fontFamilyList
+        for (var i = 0; i < list.length; i++)
+            if (String(list[i].value) === page.currentFontValue) return String(list[i].label)
+        if (page.currentFontValue !== "") return page.currentFontValue
+        return qsTr("默认")
+    }
+    readonly property real currentFontScale: (typeof App !== "undefined" && App.uiFontScale !== undefined)
+                                              ? Number(App.uiFontScale) : AppTheme.fontScale
+    readonly property string currentNavMode: (typeof App !== "undefined" && App.navMode !== undefined)
+                                              ? String(App.navMode)
+                                              : (AppTheme.navMode !== undefined ? AppTheme.navMode : "auto")
+    function setFontScale(value) {
+        if (typeof App !== "undefined" && typeof App.setUIFontScale === "function")
+            App.setUIFontScale(Number(value))
+        else
+            AppTheme.fontScale = Number(value)
+    }
+    function setFontFamily(value) {
+        if (typeof App !== "undefined" && typeof App.setUIFontFamily === "function")
+            App.setUIFontFamily(String(value))
+        else
+            AppTheme.fontFamily = String(value) !== ""
+                                  ? String(value)
+                                  : ((typeof App !== "undefined" && App.defaultFontFamily !== undefined)
+                                     ? String(App.defaultFontFamily) : C.numFont)
+    }
+    function setNavMode(value) {
+        if (typeof App !== "undefined" && typeof App.setNavMode === "function")
+            App.setNavMode(String(value))
+        else
+            AppTheme.navMode = String(value)
+    }
+
     // ---------- v0.9 AI 助手设置 ----------
     property bool aiLocalEnabled: false
     property bool aiProviderMenuOpen: false
@@ -214,16 +268,16 @@ Item {
                     Text {
                         text: qsTr("设置")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 30
+                        font.pixelSize: AppTheme.fs(30)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
                     Text {
                         text: qsTr("%1（%2）v%3").arg(App.appName).arg(App.appAlias).arg(App.version)
                         color: AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -259,16 +313,16 @@ Item {
                             Text {
                                 text: qsTr("防退出加固")
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 14
+                                font.pixelSize: AppTheme.fs(14)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                             Text {
                                 width: parent.width
                                 text: qsTr("锁定期间隐藏任务栏，并屏蔽 Win、Alt+Tab 等系统快捷键")
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 11
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -312,17 +366,17 @@ Item {
                                 Text {
                                     text: qsTr("以管理员身份运行")
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 14
+                                    font.pixelSize: AppTheme.fs(14)
                                     font.weight: Font.DemiBold
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                 }
 
                                 Text {
                                     visible: App.isAdmin === true
                                     text: qsTr("当前已提权")
                                     color: "#6FE3B0"
-                                    font.pixelSize: 11
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(11)
+                                    font.family: AppTheme.fontFamily
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
                             }
@@ -331,8 +385,8 @@ Item {
                                 width: parent.width
                                 text: qsTr("开启后会弹一次 UAC 并以管理员身份重启")
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 11
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -373,16 +427,16 @@ Item {
                             Text {
                                 text: qsTr("最高权限开机自启")
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 14
+                                font.pixelSize: AppTheme.fs(14)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                             Text {
                                 width: parent.width
                                 text: qsTr("用计划任务在登录时以最高权限启动，不再弹 UAC；需要管理员")
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 11
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -420,9 +474,9 @@ Item {
                         anchors.top: parent.top
                         text: qsTr("语言")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 15
+                        font.pixelSize: AppTheme.fs(15)
                         font.weight: Font.DemiBold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
 
                     Row {
@@ -460,9 +514,216 @@ Item {
                         anchors.bottom: parent.bottom
                         text: qsTr("切换后界面会立即更新；托盘菜单在下次启动时生效。")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                         wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            // ---------- v0.12 外观 ----------
+            GlassCard {
+                width: parent.width
+                implicitHeight: appearanceColumn.implicitHeight + 36
+                height: implicitHeight
+                radius: 20
+                interactive: false
+                glassSource: page.glassSource
+
+                Column {
+                    id: appearanceColumn
+                    x: 20
+                    y: 18
+                    width: parent.width - 40
+                    spacing: 12
+
+                    Text {
+                        text: qsTr("外观")
+                        color: AppTheme.textPrimary
+                        font.pixelSize: AppTheme.fs(15)
+                        font.weight: Font.DemiBold
+                        font.family: AppTheme.fontFamily
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 88
+                            text: qsTr("字号")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                        Repeater {
+                            model: [
+                                { value: 0.85, label: qsTr("小") },
+                                { value: 1.0, label: qsTr("标准") },
+                                { value: 1.15, label: qsTr("大") },
+                                { value: 1.3, label: qsTr("特大") }
+                            ]
+                            delegate: GlassButton {
+                                text: modelData.label
+                                tone: Math.abs(page.currentFontScale - Number(modelData.value)) < 0.03 ? "light" : "ghost"
+                                fontSize: AppTheme.fs(12)
+                                padH: 16
+                                minHeight: 32
+                                selected: Math.abs(page.currentFontScale - Number(modelData.value)) < 0.03
+                                onClicked: page.setFontScale(modelData.value)
+                            }
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 72
+                            text: qsTr("字体")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                        Item {
+                            id: fontField
+                            width: 240
+                            height: 32
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 9
+                                color: AppTheme.cardBgAlt
+                                border.width: 1
+                                border.color: fontFieldArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
+                            }
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: page.currentFontLabel
+                                color: AppTheme.textPrimary
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
+                            }
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "▾"
+                                color: AppTheme.textTertiary
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
+                            }
+                            MouseArea {
+                                id: fontFieldArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.fontMenuOpen = !page.fontMenuOpen
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("实时生效，无需重启")
+                            color: AppTheme.textTertiary
+                            font.pixelSize: AppTheme.fs(10)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 120
+                            text: qsTr("导航展开方式")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                        Repeater {
+                            model: [
+                                { value: "auto", label: qsTr("自动") },
+                                { value: "expanded", label: qsTr("始终展开") },
+                                { value: "icons", label: qsTr("仅图标") }
+                            ]
+                            delegate: GlassButton {
+                                text: modelData.label
+                                tone: page.currentNavMode === modelData.value ? "light" : "ghost"
+                                fontSize: AppTheme.fs(12)
+                                padH: 14
+                                minHeight: 32
+                                selected: page.currentNavMode === modelData.value
+                                onClicked: page.setNavMode(modelData.value)
+                            }
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: qsTr("字号与字体只影响界面显示；导航方式自动时会跟随窗口宽度。")
+                        color: AppTheme.textTertiary
+                        font.pixelSize: AppTheme.fs(10)
+                        font.family: AppTheme.fontFamily
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                // 字体下拉
+                Item {
+                    id: fontPopup
+                    visible: page.fontMenuOpen
+                    z: 40
+                    x: fontField.x
+                    y: fontField.y + fontField.height + 4
+                    width: 240
+                    height: Math.min(220, fontPopupColumn.height + 8)
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 10
+                        color: AppTheme.cardBg
+                        border.width: 1
+                        border.color: AppTheme.cardBorderStrong
+                    }
+                    Flickable {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        contentWidth: width
+                        contentHeight: fontPopupColumn.height
+                        clip: true
+                        Column {
+                            id: fontPopupColumn
+                            width: parent.width
+                            spacing: 2
+                            Repeater {
+                                model: page.fontFamilyList
+                                delegate: Item {
+                                    width: parent.width
+                                    height: 30
+                                    Text {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: String(modelData.label)
+                                        color: String(modelData.value) === page.currentFontValue
+                                               ? AppTheme.accent : AppTheme.textSecondary
+                                        font.pixelSize: AppTheme.fs(11)
+                                        font.family: AppTheme.fontFamily
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            page.setFontFamily(String(modelData.value))
+                                            page.fontMenuOpen = false
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -485,9 +746,9 @@ Item {
                         anchors.top: parent.top
                         text: qsTr("默认专注时长")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 15
+                        font.pixelSize: AppTheme.fs(15)
                         font.weight: Font.DemiBold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
 
                     Text {
@@ -496,8 +757,8 @@ Item {
                         anchors.topMargin: 2
                         text: qsTr("%1 分钟").arg(page.draftDefaultMinutes)
                         color: AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
 
                     GlassSlider {
@@ -564,9 +825,9 @@ Item {
                         anchors.top: parent.top
                         text: qsTr("反馈")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 15
+                        font.pixelSize: AppTheme.fs(15)
                         font.weight: Font.DemiBold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
 
                     Row {
@@ -604,8 +865,8 @@ Item {
                         anchors.bottom: parent.bottom
                         text: qsTr("在 GitHub 仓库 Kryon2025/Clarity 提交功能请求、Bug 反馈或参与讨论。")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                         wrapMode: Text.WordWrap
                     }
                 }
@@ -636,14 +897,14 @@ Item {
                         Text {
                             text: qsTr("AI 助手")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 13
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(13)
+                            font.family: AppTheme.fontFamily
                         }
                         Text {
                             text: qsTr("服务商、模型与对话，已移到左侧「AI」页")
                             color: AppTheme.textTertiary
-                            font.pixelSize: 11
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
                         }
                     }
                 }
@@ -691,9 +952,9 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("还清（睡眠模式）")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 15
+                            font.pixelSize: AppTheme.fs(15)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                         Item { width: parent.width - 260; height: 1 }
                         GlassSwitch {
@@ -708,8 +969,8 @@ Item {
                         width: parent.width
                         text: qsTr("到点自动进入深清锁定；开启右侧开关会提前提醒。")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                         wrapMode: Text.WordWrap
                     }
 
@@ -737,8 +998,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: qsTr("%1 锁定").arg(timeText)
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 13
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(13)
+                                    font.family: AppTheme.fontFamily
                                 }
                                 Item {
                                     anchors.right: parent.right
@@ -775,8 +1036,8 @@ Item {
                                 color: AppTheme.textPrimary
                                 selectionColor: AppTheme.accentSoft
                                 selectedTextColor: "#FFFFFF"
-                                font.pixelSize: 13
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(13)
+                                font.family: AppTheme.fontFamily
                                 onTextChanged: page.newSleepTime = text
                                 Keys.onReturnPressed: page.addSleepTime(text)
                                 Rectangle {
@@ -802,8 +1063,8 @@ Item {
                             width: parent.width
                             text: qsTr("提醒：提前 1 小时 / 30 分钟 / 1 分钟")
                             color: AppTheme.textTertiary
-                            font.pixelSize: 11
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
                         }
 
                         Row {
@@ -816,8 +1077,8 @@ Item {
                                       ? String(App.unlockChanceLabel)
                                       : qsTr("本月剩余解锁次数：%1").arg(2)
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                             }
 
                             Item {
@@ -829,8 +1090,8 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: qsTr("连续点击时钟 10 次解锁")
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 11
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
                             }
 
                             Item {
@@ -888,8 +1149,8 @@ Item {
                                 anchors.verticalCenterOffset: -8
                                 text: page.clockClickCount + " / 10"
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 10
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(10)
+                                font.family: AppTheme.fontFamily
                             }
                         }
                     }
@@ -919,8 +1180,8 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: qsTr("新手引导")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -943,8 +1204,8 @@ Item {
                 wrapMode: Text.WordWrap
                 text: qsTr("%1（%2）v%3 · Windows 专注锁机工具\n数据保存在 %APPDATA%/ShenQing/ · 主题可在左侧导航「主题」中切换").arg(App.appName).arg(App.appAlias).arg(App.version)
                 color: AppTheme.textTertiary
-                font.pixelSize: 12
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(12)
+                font.family: AppTheme.fontFamily
                 lineHeight: 1.4
             }
 

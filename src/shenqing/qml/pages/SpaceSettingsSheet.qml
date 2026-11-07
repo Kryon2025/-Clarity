@@ -175,8 +175,8 @@ GlassSheet {
                     anchors.top: parent.top
                     text: qsTr("空间名称")
                     color: AppTheme.textSecondary
-                    font.pixelSize: 13
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(13)
+                    font.family: AppTheme.fontFamily
                 }
 
                 TextInput {
@@ -188,9 +188,9 @@ GlassSheet {
                     anchors.topMargin: 4
                     text: sheetRoot.spaceName
                     color: AppTheme.textPrimary
-                    font.pixelSize: 20
+                    font.pixelSize: AppTheme.fs(20)
                     font.weight: Font.DemiBold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                     selectionColor: AppTheme.accent
                     selectedTextColor: "#FFFFFF"
                     cursorDelegate: Item {
@@ -224,8 +224,8 @@ GlassSheet {
                     anchors.topMargin: 2
                     text: qsTr("给空间起个名字")
                     color: AppTheme.textTertiary
-                    font.pixelSize: 18
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(18)
+                    font.family: AppTheme.fontFamily
                     visible: nameInput.text.length === 0
                 }
 
@@ -235,8 +235,8 @@ GlassSheet {
                     anchors.bottom: parent.bottom
                     text: nameInput.text.length + "/" + sheetRoot.nameLimit
                     color: AppTheme.textTertiary
-                    font.pixelSize: 12
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(12)
+                    font.family: AppTheme.fontFamily
                 }
             }
         }
@@ -318,9 +318,9 @@ GlassSheet {
                             horizontalAlignment: Text.AlignHCenter
                             text: qsTr("%1 分钟").arg(sheetRoot.minutes)
                             color: AppTheme.textPrimary
-                            font.pixelSize: 21
+                            font.pixelSize: AppTheme.fs(21)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
 
                         Item {
@@ -444,9 +444,9 @@ GlassSheet {
                                             return v
                                         }
                                         color: chosen ? "#FFFFFF" : "#B7C3D9"
-                                        font.pixelSize: 13
+                                        font.pixelSize: AppTheme.fs(13)
                                         font.weight: chosen ? Font.DemiBold : Font.Normal
-                                        font.family: C.numFont
+                                        font.family: AppTheme.fontFamily
                                     }
                                 }
 

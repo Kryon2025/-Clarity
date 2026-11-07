@@ -505,9 +505,9 @@ Window {
                     anchors.centerIn: parent
                     text: qsTr("预览")
                     color: AppTheme.textOnLight
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.fs(12)
                     font.weight: Font.Bold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                 }
             }
 
@@ -541,9 +541,9 @@ Window {
                     anchors.centerIn: parent
                     text: overlay.levelLabel
                     color: AppTheme.textPrimary
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.fs(12)
                     font.weight: Font.DemiBold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                 }
             }
 
@@ -552,15 +552,15 @@ Window {
                 visible: overlay.spaceName !== ""
                 text: overlay.spaceName
                 color: AppTheme.textSecondary
-                font.pixelSize: 13
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(13)
+                font.family: AppTheme.fontFamily
             }
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: overlay.remainingTextValue
                 color: AppTheme.textTertiary
-                font.pixelSize: 13
+                font.pixelSize: AppTheme.fs(13)
                 font.family: C.monoFont
             }
         }
@@ -589,9 +589,9 @@ Window {
                           ? qsTr("预览 · %1档").arg(overlay.levelLabel)
                           : (overlay.spaceName !== "" ? overlay.spaceName : qsTr("专注中"))
                     color: AppTheme.textSecondary
-                    font.pixelSize: 18
+                    font.pixelSize: AppTheme.fs(18)
                     font.weight: Font.DemiBold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                     font.letterSpacing: 2
                 }
             }
@@ -601,7 +601,7 @@ Window {
                 text: overlay.clockTime
                 color: AppTheme.textPrimary
                 font.family: C.monoFont
-                font.pixelSize: Math.max(96, Math.min(overlay.width * 0.13, overlay.height * 0.22))
+                font.pixelSize: Math.max(AppTheme.fs(96), Math.min(overlay.width * 0.13, overlay.height * 0.22))
                 font.weight: Font.Light
                 font.letterSpacing: 4
             }
@@ -609,8 +609,8 @@ Window {
             Text {
                 text: overlay.clockDate
                 color: AppTheme.textSecondary
-                font.pixelSize: 16
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(16)
+                font.family: AppTheme.fontFamily
                 font.letterSpacing: 2
             }
 
@@ -650,7 +650,7 @@ Window {
                         ColorAnimation { duration: 140 }
                     }
                     font.family: C.monoFont
-                    font.pixelSize: 34
+                    font.pixelSize: AppTheme.fs(34)
                     font.weight: Font.Light
                     font.letterSpacing: 2
                 }
@@ -660,8 +660,8 @@ Window {
                           ? qsTr("预览剩余 · 不计入专注统计")
                           : qsTr("剩余 · 已完成 %1%").arg(overlay.percentValue)
                     color: AppTheme.textSecondary
-                    font.pixelSize: 14
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(14)
+                    font.family: AppTheme.fontFamily
                 }
             }
 
@@ -670,8 +670,8 @@ Window {
                                           : (overlay.trial ? qsTr("体验模式 · 可提前结束")
                                                            : qsTr("可以暂停，但时间不会等你"))
                 color: AppTheme.textTertiary
-                font.pixelSize: 13
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(13)
+                font.family: AppTheme.fontFamily
             }
         }
 
@@ -687,7 +687,7 @@ Window {
                 ColorAnimation { duration: 140 }
             }
             font.family: C.monoFont
-            font.pixelSize: Math.max(140, Math.min(overlay.width * 0.20, overlay.height * 0.32))
+            font.pixelSize: Math.max(AppTheme.fs(140), Math.min(overlay.width * 0.20, overlay.height * 0.32))
             font.weight: Font.Light
             font.letterSpacing: 4
         }
@@ -712,8 +712,8 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("组件")
                     color: AppTheme.textTertiary
-                    font.pixelSize: 12
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(12)
+                    font.family: AppTheme.fontFamily
                     font.letterSpacing: 2
                 }
 
@@ -735,8 +735,8 @@ Window {
                         anchors.centerIn: parent
                         text: qsTr("＋ 添加组件")
                         color: AppTheme.textSecondary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                     }
                     MouseArea {
                         id: addWidgetArea
@@ -778,8 +778,8 @@ Window {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: overlay.widgetTitle(String(modelData))
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 11
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
                                 font.letterSpacing: 1
                             }
                             Item { width: parent.width - 92; height: 1 }
@@ -807,8 +807,8 @@ Window {
                             width: parent.width
                             text: overlay.widgetValue(String(modelData))
                             color: AppTheme.textPrimary
-                            font.pixelSize: 14
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(14)
+                            font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
                             elide: Text.ElideRight
@@ -841,8 +841,8 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             text: overlay.widgetTitle(String(modelData))
                             color: addItemArea.containsMouse ? AppTheme.accent : AppTheme.textSecondary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                         }
                         MouseArea {
                             id: addItemArea
@@ -974,8 +974,8 @@ Window {
                     width: 136
                     text: qsTr("未设置允许使用的应用")
                     color: AppTheme.textTertiary
-                    font.pixelSize: 12
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(12)
+                    font.family: AppTheme.fontFamily
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -1025,9 +1025,9 @@ Window {
                                     return t.length > 0 ? t.substring(0, 1).toUpperCase() : "?"
                                 }
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 22
+                                font.pixelSize: AppTheme.fs(22)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                         }
 
@@ -1061,8 +1061,8 @@ Window {
                                 anchors.centerIn: parent
                                 text: dockItem.appName
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                             }
                         }
                     }
@@ -1151,9 +1151,9 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("声音与电源")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 16
+                            font.pixelSize: AppTheme.fs(16)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                     }
                     Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
@@ -1171,15 +1171,15 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("系统音量")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 13
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(13)
+                            font.family: AppTheme.fontFamily
                         }
                         Item { width: parent.width - 260; height: 1 }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: Math.round(overlay.volumeDraft) + "%"
                             color: AppTheme.accent
-                            font.pixelSize: 13
+                            font.pixelSize: AppTheme.fs(13)
                             font.family: C.monoFont
                         }
                     }
@@ -1202,8 +1202,8 @@ Window {
                                  && Number(App.systemVolume) < 0
                         text: qsTr("当前系统不支持音量调节")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                     }
 
                     Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
@@ -1242,8 +1242,8 @@ Window {
                         width: parent.width
                         text: qsTr("关机 / 重启会先弹出确认，避免误触。")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -1271,16 +1271,16 @@ Window {
                             width: parent.width
                             text: overlay.pendingPower === "shutdown" ? qsTr("确认关机？") : qsTr("确认重启？")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 17
+                            font.pixelSize: AppTheme.fs(17)
                             font.weight: Font.Bold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                         Text {
                             width: parent.width
                             text: qsTr("系统会立即执行该操作，未保存的工作可能丢失。")
                             color: AppTheme.textSecondary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                         }
                         Row {
@@ -1304,9 +1304,9 @@ Window {
                                     anchors.centerIn: parent
                                     text: qsTr("确认执行")
                                     color: "#FFFFFF"
-                                    font.pixelSize: 13
+                                    font.pixelSize: AppTheme.fs(13)
                                     font.weight: Font.DemiBold
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                 }
                                 MouseArea {
                                     id: confirmArea

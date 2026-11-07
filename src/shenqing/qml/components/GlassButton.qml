@@ -176,9 +176,9 @@ Item {
             if (root.tone === "danger") return "#FFFFFF"
             return AppTheme.textPrimary
         }
-        font.pixelSize: root.fontSize
+        font.pixelSize: AppTheme.fs(root.fontSize)
         font.weight: Font.DemiBold
-        font.family: C.numFont
+        font.family: AppTheme.fontFamily
     }
 
     MouseArea {

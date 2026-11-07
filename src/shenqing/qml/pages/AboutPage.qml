@@ -317,9 +317,9 @@ Item {
                                 Text {
                                     text: page.appNameText
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 32
+                                    font.pixelSize: AppTheme.fs(32)
                                     font.weight: Font.Bold
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                     font.letterSpacing: 2
                                 }
 
@@ -327,8 +327,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Clarity"
                                     color: AppTheme.textSecondary
-                                    font.pixelSize: 18
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(18)
+                                    font.family: AppTheme.fontFamily
                                     font.letterSpacing: 1
                                 }
                             }
@@ -336,16 +336,16 @@ Item {
                             Text {
                                 text: qsTr("v%1 · Windows 专注锁机工具").arg(page.appVersion)
                                 color: AppTheme.accent
-                                font.pixelSize: 13
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(13)
+                                font.family: AppTheme.fontFamily
                             }
 
                             Text {
                                 width: headerColumn.width - 100
                                 text: qsTr("选好模式与时长，时间没到不开门。三档空间、各自白名单，专注记录保存在本机。")
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                                 lineHeight: 1.2
                             }
@@ -418,8 +418,8 @@ Item {
                         width: parent.width
                         text: page.updateHintText
                         color: AppTheme.accent
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                         visible: opacity > 0.01
                         opacity: page.updateHintVisible ? 1 : 0
                         Behavior on opacity {
@@ -485,9 +485,9 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: page.updateTitle()
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 16
+                                    font.pixelSize: AppTheme.fs(16)
                                     font.weight: Font.DemiBold
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -497,9 +497,9 @@ Item {
                                 visible: page.updateVersion !== ""
                                 text: "v" + page.updateVersion
                                 color: AppTheme.accent
-                                font.pixelSize: 12
+                                font.pixelSize: AppTheme.fs(12)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                         }
 
@@ -519,16 +519,16 @@ Item {
                                 width: parent.width
                                 text: qsTr("发现新版本 v%1（当前 v%2）").arg(page.updateVersion).arg(page.appVersion)
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 14
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(14)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
 
                             Text {
                                 text: qsTr("更新说明")
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                             }
 
                             // 更新说明：最多显示 4 行，更多内容可在框内滚动
@@ -547,8 +547,8 @@ Item {
                                     width: parent.width
                                     text: page.updateNotes !== "" ? page.updateNotes : qsTr("暂无更新说明")
                                     color: AppTheme.textSecondary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                     wrapMode: Text.WordWrap
                                     lineHeight: 1.35
                                 }
@@ -587,8 +587,8 @@ Item {
                                 width: parent.width
                                 text: qsTr("正在下载 v%1，请稍候…").arg(page.updateVersion)
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 14
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(14)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
 
@@ -630,8 +630,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: qsTr("已下载 %1%").arg(Math.round(page.updateProgress))
                                     color: AppTheme.textSecondary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(12)
+                                    font.family: AppTheme.fontFamily
                                 }
 
                                 GlassButton {
@@ -655,8 +655,8 @@ Item {
                                 width: parent.width
                                 text: qsTr("安装包已下载完成")
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 14
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(14)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
 
@@ -665,8 +665,8 @@ Item {
                                 visible: page.updateAssetName !== ""
                                 text: qsTr("文件：%1").arg(page.updateAssetName)
                                 color: AppTheme.textTertiary
-                                font.pixelSize: 11
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(11)
+                                font.family: AppTheme.fontFamily
                                 elide: Text.ElideRight
                             }
 
@@ -705,8 +705,8 @@ Item {
                                                                   ? page.updateError
                                                                   : qsTr("未知错误"))
                                 color: AppTheme.danger
-                                font.pixelSize: 13
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(13)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
 
@@ -773,9 +773,9 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: qsTr("更新日志")
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fs(16)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                         }
 
@@ -784,8 +784,8 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("共 %1 个版本").arg(page.changelogData.length)
                             color: AppTheme.textTertiary
-                            font.pixelSize: 11
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
                         }
                     }
 
@@ -861,9 +861,9 @@ Item {
                                                 anchors.centerIn: parent
                                                 text: "v" + entry.entryVersion
                                                 color: AppTheme.accent
-                                                font.pixelSize: 11
+                                                font.pixelSize: AppTheme.fs(11)
                                                 font.weight: Font.DemiBold
-                                                font.family: C.numFont
+                                                font.family: AppTheme.fontFamily
                                             }
                                         }
 
@@ -871,8 +871,8 @@ Item {
                                             anchors.verticalCenter: parent.verticalCenter
                                             text: entry.entryDate
                                             color: AppTheme.textTertiary
-                                            font.pixelSize: 11
-                                            font.family: C.numFont
+                                            font.pixelSize: AppTheme.fs(11)
+                                            font.family: AppTheme.fontFamily
                                         }
 
                                         Rectangle {
@@ -890,8 +890,8 @@ Item {
                                                 anchors.centerIn: parent
                                                 text: entry.entryTag
                                                 color: AppTheme.textSecondary
-                                                font.pixelSize: 10
-                                                font.family: C.numFont
+                                                font.pixelSize: AppTheme.fs(10)
+                                                font.family: AppTheme.fontFamily
                                             }
                                         }
                                     }
@@ -966,8 +966,8 @@ Item {
                                                     width: parent.width - 12
                                                     text: String(modelData)
                                                     color: AppTheme.textSecondary
-                                                    font.pixelSize: 12
-                                                    font.family: C.numFont
+                                                    font.pixelSize: AppTheme.fs(12)
+                                                    font.family: AppTheme.fontFamily
                                                     wrapMode: Text.WordWrap
                                                     lineHeight: 1.25
                                                 }
@@ -1028,9 +1028,9 @@ Item {
                                 text: sectionCard.sectionData.title !== undefined
                                       ? String(sectionCard.sectionData.title) : ""
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fs(16)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                         }
 
@@ -1075,9 +1075,9 @@ Item {
                                                 width: parent.width
                                                 text: modelData.label !== undefined ? String(modelData.label) : ""
                                                 color: AppTheme.textPrimary
-                                                font.pixelSize: 13
+                                                font.pixelSize: AppTheme.fs(13)
                                                 font.weight: Font.DemiBold
-                                                font.family: C.numFont
+                                                font.family: AppTheme.fontFamily
                                                 wrapMode: Text.WordWrap
                                             }
 
@@ -1086,8 +1086,8 @@ Item {
                                                 visible: modelData.desc !== undefined && String(modelData.desc) !== ""
                                                 text: modelData.desc !== undefined ? String(modelData.desc) : ""
                                                 color: AppTheme.textSecondary
-                                                font.pixelSize: 12
-                                                font.family: C.numFont
+                                                font.pixelSize: AppTheme.fs(12)
+                                                font.family: AppTheme.fontFamily
                                                 wrapMode: Text.WordWrap
                                                 lineHeight: 1.25
                                             }
@@ -1128,8 +1128,8 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: qsTr("启动时自动检查更新")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -1149,8 +1149,8 @@ Item {
                 text: qsTr("%1（Clarity）v%2 · 界面 v0.6 · 数据保存在 %APPDATA%\\ShenQing\\")
                       .arg(page.appNameText).arg(page.appVersion)
                 color: AppTheme.textTertiary
-                font.pixelSize: 11
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
                 wrapMode: Text.WordWrap
             }
 
@@ -1216,9 +1216,9 @@ Item {
                 width: parent.width - 80
                 text: page.docTitle()
                 color: AppTheme.textPrimary
-                font.pixelSize: 17
+                font.pixelSize: AppTheme.fs(17)
                 font.weight: Font.DemiBold
-                font.family: C.numFont
+                font.family: AppTheme.fontFamily
                 elide: Text.ElideRight
             }
 
@@ -1288,7 +1288,7 @@ Item {
                     selectionColor: AppTheme.accentSoft
                     selectedTextColor: "#FFFFFF"
                     font.family: C.monoFont
-                    font.pixelSize: 12
+                    font.pixelSize: AppTheme.fs(12)
                     selectByMouse: true
                     activeFocusOnPress: true
                 }

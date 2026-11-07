@@ -134,9 +134,9 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("AI 助手")
                     color: AppTheme.textPrimary
-                    font.pixelSize: 17
+                    font.pixelSize: AppTheme.fs(17)
                     font.weight: Font.DemiBold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                 }
             }
 
@@ -175,17 +175,17 @@ Window {
                     horizontalAlignment: Text.AlignHCenter
                     text: qsTr("还没有配置 AI 助手")
                     color: AppTheme.textPrimary
-                    font.pixelSize: 20
+                    font.pixelSize: AppTheme.fs(20)
                     font.weight: Font.DemiBold
-                    font.family: C.numFont
+                    font.family: AppTheme.fontFamily
                 }
                 Text {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     text: qsTr("请在设置 → AI 助手中配置服务商与 API Key。")
                     color: AppTheme.textSecondary
-                    font.pixelSize: 13
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(13)
+                    font.family: AppTheme.fontFamily
                     wrapMode: Text.WordWrap
                 }
                 GlassButton {
@@ -229,8 +229,8 @@ Window {
                             width: parent.width
                             text: qsTr("把问题交给深清：可以问专注方法、帮你整理思路，或随便聊聊。")
                             color: AppTheme.textSecondary
-                            font.pixelSize: 13
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(13)
+                            font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                         }
 
@@ -264,8 +264,8 @@ Window {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: qsTr("思考中…")
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 13
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(13)
+                                font.family: AppTheme.fontFamily
                             }
                         }
 
@@ -280,8 +280,8 @@ Window {
                             color: AppTheme.textPrimary
                             selectionColor: AppTheme.accentSoft
                             selectedTextColor: "#FFFFFF"
-                            font.pixelSize: 14
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(14)
+                            font.family: AppTheme.fontFamily
                             selectByMouse: true
                         }
 
@@ -290,8 +290,8 @@ Window {
                             width: parent.width
                             text: panel.aiError !== "" ? panel.aiError : qsTr("AI 请求失败")
                             color: AppTheme.danger
-                            font.pixelSize: 13
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(13)
+                            font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -330,8 +330,8 @@ Window {
                     color: AppTheme.textPrimary
                     selectionColor: AppTheme.accentSoft
                     selectedTextColor: "#FFFFFF"
-                    font.pixelSize: 13
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(13)
+                    font.family: AppTheme.fontFamily
                     text: panel.query
                     onTextChanged: panel.query = text
                     enabled: panel.aiState !== "loading"
@@ -341,8 +341,8 @@ Window {
                         visible: inputField.text.length === 0
                         text: qsTr("问点什么…（Enter 发送）")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
 
@@ -361,9 +361,9 @@ Window {
                         anchors.centerIn: parent
                         text: qsTr("发送")
                         color: "#FFFFFF"
-                        font.pixelSize: 12
+                        font.pixelSize: AppTheme.fs(12)
                         font.weight: Font.DemiBold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
                     MouseArea {
                         id: sendArea
@@ -388,8 +388,8 @@ Window {
                     anchors.centerIn: parent
                     text: copiedHint.visible ? qsTr("已复制") : qsTr("复制全文")
                     color: copyArea.containsMouse ? AppTheme.accent : AppTheme.textTertiary
-                    font.pixelSize: 11
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(11)
+                    font.family: AppTheme.fontFamily
                 }
                 MouseArea {
                     id: copyArea

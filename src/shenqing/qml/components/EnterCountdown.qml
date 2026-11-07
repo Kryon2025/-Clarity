@@ -525,7 +525,7 @@ Window {
                 text: String(overlay.shouldShow ? overlay.remaining : overlay.lastRemaining)
                 color: AppTheme.textPrimary
                 font.family: C.monoFont
-                font.pixelSize: Math.max(96, Math.min(overlay.width * 0.13, overlay.height * 0.22))
+                font.pixelSize: Math.max(AppTheme.fs(96), Math.min(overlay.width * 0.13, overlay.height * 0.22))
                 font.weight: Font.Light
                 style: Text.Outline
                 styleColor: "#88020A10"
@@ -534,8 +534,8 @@ Window {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: qsTr("即将进入 · %1").arg(overlay.displaySpaceLabel())
                 color: AppTheme.textSecondary
-                font.pixelSize: Math.max(14, Math.round(overlay.height * 0.02))
-                font.family: C.numFont
+                font.pixelSize: Math.max(AppTheme.fs(14), Math.round(overlay.height * 0.02))
+                font.family: AppTheme.fontFamily
                 font.letterSpacing: 1
                 style: Text.Outline
                 styleColor: "#88020A10"
@@ -566,8 +566,8 @@ Window {
                     anchors.centerIn: parent
                     text: qsTr("取消")
                     color: AppTheme.textSecondary
-                    font.pixelSize: 13
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(13)
+                    font.family: AppTheme.fontFamily
                 }
                 MouseArea {
                     id: cancelArea
@@ -591,8 +591,8 @@ Window {
                     anchors.centerIn: parent
                     text: qsTr("点击任意位置取消 / Esc")
                     color: AppTheme.textSecondary
-                    font.pixelSize: 12
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(12)
+                    font.family: AppTheme.fontFamily
                     font.letterSpacing: 1
                 }
             }

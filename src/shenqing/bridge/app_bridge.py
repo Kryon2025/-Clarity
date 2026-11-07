@@ -1916,6 +1916,91 @@ class AppBridge(QObject):
         self._settings.set("nav_expanded", bool(expanded))
         self.settingsChanged.emit()
 
+    # ---------- v0.12 UI 字体 / 字号 / 导航模式 ----------
+    @Property(str, notify=settingsChanged)
+    def uiFontFamily(self) -> str:
+        return str(self._settings.get("ui_font_family", "") or "")
+
+    @Slot(str)
+    def setUIFontFamily(self, family: str) -> None:
+        self._settings.set("ui_font_family", str(family or "").strip())
+        self.settingsChanged.emit()
+
+    @Property(list, constant=True)
+    def uiFontFamilies(self) -> list[str]:
+        """系统可选中文字体（过滤 @ 开头的竖排字体，排序，最多 200）。"""
+        try:
+            from PySide6.QtGui import QFontDatabase
+
+            families = {
+                str(name)
+                for name in QFontDatabase.families()
+                if name and not str(name).startswith("@")
+            }
+            result = sorted(families)[:200]
+            if result:
+                return result
+            # 离屏/无字体目录环境可能枚举为空：至少返回默认字体，避免下拉框空白
+            fallback = str(self.defaultFontFamily or "Sans Serif")
+            return [fallback]
+        except Exception:  # noqa: BLE001 - 字体枚举失败不能影响界面
+            return []
+
+    @Property(str, constant=True)
+    def defaultFontFamily(self) -> str:
+        """内置默认字体（QML 在 ui_font_family 为空时使用）。"""
+        try:
+            from PySide6.QtGui import QFontDatabase
+            from PySide6.QtWidgets import QApplication
+
+            application = QApplication.instance()
+            if application is not None:
+                return str(application.font().family())
+            return str(
+                QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family()
+            )
+        except Exception:  # noqa: BLE001
+            return ""
+
+    @staticmethod
+    def _normalized_font_scale(value: object) -> float:
+        """夹紧到 0.8–1.4，并四舍五入到 0.05 步进。"""
+        try:
+            scale = float(value)
+        except (TypeError, ValueError):
+            scale = 1.0
+        scale = max(0.8, min(1.4, scale))
+        steps = round((scale - 0.8) / 0.05)
+        return round(0.8 + steps * 0.05, 2)
+
+    @Property(float, notify=settingsChanged)
+    def uiFontScale(self) -> float:
+        return self._normalized_font_scale(self._settings.get("ui_font_scale", 1.0))
+
+    @Slot(float)
+    def setUIFontScale(self, scale: float) -> None:
+        self._settings.set("ui_font_scale", self._normalized_font_scale(scale))
+        self.settingsChanged.emit()
+
+    @Property(list, constant=True)
+    def uiFontScaleOptions(self) -> list[float]:
+        return [0.85, 1.0, 1.15, 1.3]
+
+    NAV_MODES = ("auto", "expanded", "icons", "custom")
+
+    @Property(str, notify=settingsChanged)
+    def navMode(self) -> str:
+        value = str(self._settings.get("nav_mode", "expanded") or "expanded")
+        return value if value in self.NAV_MODES else "expanded"
+
+    @Slot(str)
+    def setNavMode(self, mode: str) -> None:
+        value = str(mode or "")
+        if value not in self.NAV_MODES:
+            return
+        self._settings.set("nav_mode", value)
+        self.settingsChanged.emit()
+
     @Property(bool, notify=settingsChanged)
     def keepAlive(self) -> bool:
         """True = 不杀进程，只隐藏窗口 + 静音。"""

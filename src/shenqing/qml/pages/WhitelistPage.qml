@@ -149,9 +149,9 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: qsTr("允许使用的应用")
             color: AppTheme.textPrimary
-            font.pixelSize: 22
+            font.pixelSize: AppTheme.fs(22)
             font.weight: Font.Bold
-            font.family: C.numFont
+            font.family: AppTheme.fontFamily
         }
 
         Rectangle {
@@ -171,8 +171,8 @@ Item {
                 anchors.centerIn: parent
                 text: page.spaceName
                 color: AppTheme.textSecondary
-                font.pixelSize: 11
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
             }
         }
 
@@ -213,8 +213,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: page.searchText
             color: AppTheme.textPrimary
-            font.pixelSize: 15
-            font.family: C.numFont
+            font.pixelSize: AppTheme.fs(15)
+            font.family: AppTheme.fontFamily
             selectionColor: AppTheme.accent
             selectedTextColor: "#FFFFFF"
             selectByMouse: true
@@ -225,8 +225,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("搜索应用")
                 color: AppTheme.textTertiary
-                font.pixelSize: 15
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(15)
+                font.family: AppTheme.fontFamily
                 visible: searchInput.text.length === 0
             }
         }
@@ -328,9 +328,9 @@ Item {
                         anchors.centerIn: parent
                         text: modelData.label
                         color: chosen ? "#FFFFFF" : "#B7C3D9"
-                        font.pixelSize: 13
+                        font.pixelSize: AppTheme.fs(13)
                         font.weight: chosen ? Font.DemiBold : Font.Normal
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                     }
 
                     MouseArea {
@@ -409,16 +409,16 @@ Item {
                     Text {
                         text: modelData.name !== undefined ? String(modelData.name) : ""
                         color: AppTheme.textPrimary
-                        font.pixelSize: 15
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(15)
+                        font.family: AppTheme.fontFamily
                         elide: Text.ElideRight
                         width: parent.width
                     }
                     Text {
                         text: modelData.exe !== undefined ? String(modelData.exe) : ""
                         color: AppTheme.textTertiary
-                        font.pixelSize: 11
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(11)
+                        font.family: AppTheme.fontFamily
                         elide: Text.ElideRight
                         width: parent.width
                     }
@@ -470,8 +470,8 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: page.catalog.length === 0 ? qsTr("暂无应用") : qsTr("没有匹配的应用")
                 color: "#C6D0E2"
-                font.pixelSize: 16
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(16)
+                font.family: AppTheme.fontFamily
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -482,8 +482,8 @@ Item {
                       ? qsTr("还没有扫描到本机应用。点「刷新应用清单」扫描一次（约 1–6 秒）。")
                       : qsTr("换个关键词，或切到「全部应用」分类看看。")
                 color: AppTheme.textTertiary
-                font.pixelSize: 12
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(12)
+                font.family: AppTheme.fontFamily
             }
             GlassButton {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -521,8 +521,8 @@ Item {
               ? qsTr("%1 · 已选择 %2 个应用 · 命中白名单的进程不会被结束").arg(page.spaceName).arg(page.allowedList.length)
               : qsTr("已选择 %1 个应用 · 命中白名单的进程不会被结束").arg(page.allowedList.length)
             color: AppTheme.textTertiary
-            font.pixelSize: 12
-            font.family: C.numFont
+            font.pixelSize: AppTheme.fs(12)
+            font.family: AppTheme.fontFamily
         }
 
         GlassButton {

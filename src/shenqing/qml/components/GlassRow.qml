@@ -37,7 +37,7 @@ Item {
         color: root.titleColor
         font.pixelSize: root.titleSize
         font.weight: Font.DemiBold
-        font.family: C.numFont
+        font.family: AppTheme.fontFamily
         elide: Text.ElideRight
         width: Math.min(implicitWidth, root.width - 190)
     }
@@ -53,8 +53,8 @@ Item {
             text: root.value
             visible: root.value !== ""
             color: AppTheme.textSecondary
-            font.pixelSize: 14
-            font.family: C.numFont
+            font.pixelSize: AppTheme.fs(14)
+            font.family: AppTheme.fontFamily
         }
 
         Item {

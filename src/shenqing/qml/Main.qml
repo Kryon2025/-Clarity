@@ -44,7 +44,7 @@ FluentWindow {
                                              : (showAIPage ? 6 : (showUpdatePage ? 7 : navIndex)))
 
     // 导航轨展开/收起 + 插件入口
-    property bool navExpanded: false
+    property bool navExpanded: true
     property bool pluginListOpen: false
     property string activePluginPath: ""
 
@@ -61,14 +61,14 @@ FluentWindow {
         return list ? list : []
     }
 
-    readonly property int railCollapsedWidth: 76
-    readonly property int railExpandedWidth: 168
+    readonly property int railCollapsedWidth: 64
+    readonly property int railExpandedWidth: 140
     readonly property int railWidth: navExpanded ? railExpandedWidth : railCollapsedWidth
-    readonly property int navItemWidth: navExpanded ? railExpandedWidth - 20 : 56
-    readonly property int navItemHeight: 62
-    // 液态玻璃高亮块比菜单项大一圈（宽 +16 / 高 +10），圆角跟随
-    readonly property int navHighlightWidth: navItemWidth + 16
-    readonly property int navHighlightHeight: navItemHeight + 10
+    readonly property int navItemWidth: navExpanded ? railExpandedWidth - 16 : 52
+    readonly property int navItemHeight: 52
+    // 液态玻璃高亮块只比菜单项大一圈（宽 +8 / 高 +6），圆角跟随
+    readonly property int navHighlightWidth: navItemWidth + 8
+    readonly property int navHighlightHeight: navItemHeight + 6
 
     // 页面切换动画开关（截图/低功耗场景可关闭，动画依赖渲染帧，被系统节流时会停在过渡态）
     property bool pageTransitions: true
@@ -160,13 +160,36 @@ FluentWindow {
         return Math.max(0, Math.min(1, win.navIndex))
     }
 
+    function applyAppearance() {
+        var scale = (typeof App !== "undefined" && App.uiFontScale !== undefined) ? Number(App.uiFontScale) : 1
+        AppTheme.fontScale = isFinite(scale) ? Math.max(0.8, Math.min(1.4, scale)) : 1
+        var family = (typeof App !== "undefined" && App.uiFontFamily !== undefined) ? String(App.uiFontFamily) : ""
+        var fallbackFamily = (typeof App !== "undefined" && App.defaultFontFamily !== undefined
+                              && String(App.defaultFontFamily) !== "") ? String(App.defaultFontFamily) : C.numFont
+        AppTheme.fontFamily = family !== "" ? family : fallbackFamily
+        var mode = (typeof App !== "undefined" && App.navMode !== undefined)
+                   ? String(App.navMode)
+                   : (typeof AppTheme.navMode !== "undefined" ? AppTheme.navMode : "auto")
+        AppTheme.navMode = mode
+        if (mode === "expanded") win.navExpanded = true
+        else if (mode === "icons") win.navExpanded = false
+        else if (typeof App !== "undefined" && App.navExpanded !== undefined)
+            win.navExpanded = App.navExpanded === true
+        else
+            win.navExpanded = true
+    }
+
     Component.onCompleted: {
         navigationView.visible = false
         navigationView.navigationBar.visible = false
         navigationView.navigationBar.titleBarEnabled = false
-        if (typeof App.navExpanded !== "undefined")
-            win.navExpanded = App.navExpanded === true
         AppTheme.mode = (typeof App !== "undefined" && App.themeMode) ? App.themeMode : "solid"
+        win.applyAppearance()
+    }
+
+    Connections {
+        target: (typeof App !== "undefined") ? App : null
+        function onSettingsChanged() { win.applyAppearance() }
     }
 
     background: Backdrop { id: appBackdrop }
@@ -714,7 +737,7 @@ FluentWindow {
                                     text: modelData.label
                                     color: navItem.itemColor
                                     font.pixelSize: navItem.labelSize
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -738,7 +761,7 @@ FluentWindow {
                                     text: modelData.label
                                     color: navItem.itemColor
                                     font.pixelSize: navItem.labelSize
-                                    font.family: C.numFont
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
 
@@ -836,8 +859,8 @@ FluentWindow {
                                                 width: win.navItemWidth - 70
                                                 text: modelData.title !== undefined ? String(modelData.title) : ""
                                                 color: AppTheme.textSecondary
-                                                font.pixelSize: 11
-                                                font.family: C.numFont
+                                                font.pixelSize: AppTheme.fs(11)
+                                                font.family: AppTheme.fontFamily
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -863,7 +886,7 @@ FluentWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: railToggle.bottom
                     anchors.topMargin: 14
-                    spacing: 10
+                    spacing: 6
 
                     Repeater {
                         id: primaryNavRepeater
@@ -878,7 +901,7 @@ FluentWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: versionLabel.top
                     anchors.bottomMargin: 12
-                    spacing: 8
+                    spacing: 6
 
                     Rectangle {
                         width: Math.round(win.navItemWidth * 0.62)
@@ -901,8 +924,8 @@ FluentWindow {
                     anchors.bottomMargin: 14
                     text: "v" + App.version
                     color: AppTheme.textTertiary
-                    font.pixelSize: 10
-                    font.family: C.numFont
+                    font.pixelSize: AppTheme.fs(10)
+                    font.family: AppTheme.fontFamily
                 }
             }
 
@@ -1162,8 +1185,8 @@ FluentWindow {
                         color: AppTheme.textPrimary
                         selectionColor: AppTheme.accentSoft
                         selectedTextColor: "#FFFFFF"
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                         onTextChanged: {
                             win.globalSearchText = text
                             win.globalSearchOpen = true
@@ -1181,8 +1204,8 @@ FluentWindow {
                         visible: globalSearchInput.text.length === 0 && !globalSearchInput.activeFocus
                         text: qsTr("搜索空间 / 主题 / 插件")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                         elide: Text.ElideRight
                     }
 
@@ -1269,8 +1292,8 @@ FluentWindow {
                         anchors.centerIn: parent
                         text: qsTr("没有找到匹配结果")
                         color: AppTheme.textTertiary
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                     }
 
                     ListView {
@@ -1324,8 +1347,8 @@ FluentWindow {
                                     width: parent.width
                                     text: modelData.title !== undefined ? String(modelData.title) : ""
                                     color: AppTheme.textPrimary
-                                    font.pixelSize: 13
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(13)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
 
@@ -1333,8 +1356,8 @@ FluentWindow {
                                     width: parent.width
                                     text: modelData.sub !== undefined ? String(modelData.sub) : ""
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 11
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(11)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                     wrapMode: Text.NoWrap
                                     maximumLineCount: 1

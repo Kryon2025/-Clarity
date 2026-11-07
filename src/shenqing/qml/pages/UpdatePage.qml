@@ -85,16 +85,16 @@ Item {
                     Text {
                         text: qsTr("更新")
                         color: AppTheme.textPrimary
-                        font.pixelSize: 30
+                        font.pixelSize: AppTheme.fs(30)
                         font.weight: Font.Bold
-                        font.family: C.numFont
+                        font.family: AppTheme.fontFamily
                         font.letterSpacing: 1
                     }
                     Text {
                         text: qsTr("深清当前版本 v%1 · 数据保存在本机").arg(String(App.version))
                         color: AppTheme.textSecondary
-                        font.pixelSize: 13
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(13)
+                        font.family: AppTheme.fontFamily
                     }
                 }
             }
@@ -140,17 +140,17 @@ Item {
                             Text {
                                 text: qsTr("当前版本 v%1").arg(String(App.version))
                                 color: AppTheme.textPrimary
-                                font.pixelSize: 16
+                                font.pixelSize: AppTheme.fs(16)
                                 font.weight: Font.DemiBold
-                                font.family: C.numFont
+                                font.family: AppTheme.fontFamily
                             }
                             Text {
                                 width: parent.width
                                 text: page.statusText
                                 color: page.updateState === "error" ? AppTheme.danger
                                       : (page.updateState === "available" ? AppTheme.accent : AppTheme.textSecondary)
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -193,16 +193,16 @@ Item {
                             text: page.latestVersion !== ""
                                   ? qsTr("新版本 v%1").arg(page.latestVersion) : qsTr("新版本")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 14
+                            font.pixelSize: AppTheme.fs(14)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                         Text {
                             width: parent.width
                             text: page.updateNotes !== "" ? page.updateNotes : qsTr("暂无更新说明")
                             color: AppTheme.textSecondary
-                            font.pixelSize: 12
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
                             wrapMode: Text.WordWrap
                             lineHeight: 1.45
                         }
@@ -239,8 +239,8 @@ Item {
                             Text {
                                 text: qsTr("已下载 %1%").arg(Math.round(page.updateProgress))
                                 color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
+                                font.pixelSize: AppTheme.fs(12)
+                                font.family: AppTheme.fontFamily
                             }
                             Item { width: parent.width - 200; height: 1 }
                             GlassButton {
@@ -283,8 +283,8 @@ Item {
                         width: parent.width
                         text: page.updateError
                         color: AppTheme.danger
-                        font.pixelSize: 12
-                        font.family: C.numFont
+                        font.pixelSize: AppTheme.fs(12)
+                        font.family: AppTheme.fontFamily
                         wrapMode: Text.WordWrap
                     }
 
@@ -296,8 +296,8 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("启动时自动检查更新")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 13
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(13)
+                            font.family: AppTheme.fontFamily
                         }
                         Item { width: parent.width - 220; height: 1 }
                         GlassSwitch {
@@ -330,17 +330,17 @@ Item {
                         Text {
                             text: qsTr("最近更新日志")
                             color: AppTheme.textPrimary
-                            font.pixelSize: 15
+                            font.pixelSize: AppTheme.fs(15)
                             font.weight: Font.DemiBold
-                            font.family: C.numFont
+                            font.family: AppTheme.fontFamily
                         }
                         Item { width: parent.width - 200; height: 1 }
                         Text {
                             text: qsTr("共 %1 个版本").arg((typeof App !== "undefined" && App.changelog !== undefined)
                                                           ? App.changelog.length : 0)
                             color: AppTheme.textTertiary
-                            font.pixelSize: 11
-                            font.family: C.numFont
+                            font.pixelSize: AppTheme.fs(11)
+                            font.family: AppTheme.fontFamily
                         }
                     }
 
@@ -363,7 +363,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: "v" + String(modelData.version)
                                         color: index === 0 ? AppTheme.accent : AppTheme.textSecondary
-                                        font.pixelSize: 11
+                                        font.pixelSize: AppTheme.fs(11)
                                         font.family: C.monoFont
                                     }
                                 }
@@ -373,8 +373,8 @@ Item {
                                     text: (modelData.items !== undefined && modelData.items.length > 0)
                                           ? String(modelData.items[0]) : qsTr("更新内容")
                                     color: AppTheme.textSecondary
-                                    font.pixelSize: 11
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(11)
+                                    font.family: AppTheme.fontFamily
                                     elide: Text.ElideRight
                                 }
                                 Item { width: parent.width - 470; height: 1 }
@@ -382,8 +382,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: (modelData.date !== undefined) ? String(modelData.date) : ""
                                     color: AppTheme.textTertiary
-                                    font.pixelSize: 10
-                                    font.family: C.numFont
+                                    font.pixelSize: AppTheme.fs(10)
+                                    font.family: AppTheme.fontFamily
                                 }
                             }
                         }
@@ -395,8 +395,8 @@ Item {
                 width: parent.width
                 text: qsTr("更新会从 GitHub Releases 获取安装包，下载完成后可一键安装并重启。")
                 color: AppTheme.textTertiary
-                font.pixelSize: 11
-                font.family: C.numFont
+                font.pixelSize: AppTheme.fs(11)
+                font.family: AppTheme.fontFamily
                 wrapMode: Text.WordWrap
             }
         }
