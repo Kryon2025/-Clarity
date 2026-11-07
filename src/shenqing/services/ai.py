@@ -314,11 +314,16 @@ class AIService:
                 detail = exc.read().decode("utf-8", errors="replace")[:200]
             except Exception:  # noqa: BLE001
                 pass
-            code = "AUTH" if exc.code in (401, 403) else "HTTP"
-            return (
-                None,
-                self.sanitize(f"{code} {exc.code}: {detail}") if detail else f"{code} {exc.code}",
-            )
+            if exc.code in (401, 403):
+                return None, f"API Key 无效或权限不足（HTTP {exc.code}）"
+            if exc.code == 404:
+                return None, "接口地址可能不正确（HTTP 404）：请检查 API Base，例如 DeepSeek 应为 https://api.deepseek.com/v1"
+            if exc.code == 429:
+                return None, "请求过于频繁（HTTP 429），请稍后再试"
+            if exc.code >= 500:
+                return None, f"服务端错误（HTTP {exc.code}），请稍后再试"
+            suffix = f"：{self.sanitize(detail)}" if detail else ""
+            return None, f"请求被拒绝（HTTP {exc.code}）{suffix}"
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
             return None, self.sanitize(f"网络错误：{exc}")
 

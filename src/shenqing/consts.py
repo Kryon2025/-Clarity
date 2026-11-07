@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.10.0"
+APP_VERSION = "0.10.1"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,17 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.10.1",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "AI 错误提示更友好：404 会提示检查 API Base（如 DeepSeek 应为 https://api.deepseek.com/v1），401/403 提示 Key 无效，429 限流提示，5xx 服务端错误",
+        ],
+        "items_en": [
+            "Friendlier AI errors: 404 suggests checking the API base (DeepSeek should be https://api.deepseek.com/v1), 401/403 means invalid key, 429 rate limit, 5xx server error",
+        ],
+    },
     {
         "version": "0.10.0",
         "date": "2025-11-07",
