@@ -913,6 +913,7 @@ FluentWindow {
                 anchors.leftMargin: 6
                 anchors.right: parent.right
                 anchors.top: parent.top
+                anchors.topMargin: 56
                 anchors.bottom: parent.bottom
 
                 AnimatedPage {
@@ -984,8 +985,9 @@ FluentWindow {
 
                 // 主题页：不占 navIndex，showThemePage 时叠加（浮层式：额外 0.98→1 缩放）
                 AnimatedPage {
+                    id: themePageLayer
                     anchors.fill: parent
-                    z: win.effectivePage === 4 ? 4 : 1
+                    z: (win.effectivePage === 4 || themePageLayer.shown) ? 4 : 1
                     active: win.effectivePage === 4
                     animationsEnabled: win.pageTransitions
                     scaleEnabled: true
@@ -999,8 +1001,9 @@ FluentWindow {
 
                 // 关于页：独立 pageKey（effectivePage = 5），不占 navIndex（浮层式：额外 0.98→1 缩放）
                 AnimatedPage {
+                    id: aboutPageLayer
                     anchors.fill: parent
-                    z: win.effectivePage === 5 ? 4 : 1
+                    z: (win.effectivePage === 5 || aboutPageLayer.shown) ? 4 : 1
                     active: win.effectivePage === 5
                     animationsEnabled: win.pageTransitions
                     scaleEnabled: true
@@ -1013,8 +1016,9 @@ FluentWindow {
 
                 // AI 页：独立 pageKey（effectivePage = 6），不占 navIndex
                 AnimatedPage {
+                    id: aiPageLayer
                     anchors.fill: parent
-                    z: win.effectivePage === 6 ? 4 : 1
+                    z: (win.effectivePage === 6 || aiPageLayer.shown) ? 4 : 1
                     active: win.effectivePage === 6
                     animationsEnabled: win.pageTransitions
                     scaleEnabled: true
@@ -1027,8 +1031,9 @@ FluentWindow {
 
                 // 更新页：独立 pageKey（effectivePage = 7），不占 navIndex
                 AnimatedPage {
+                    id: updatePageLayer
                     anchors.fill: parent
-                    z: win.effectivePage === 7 ? 4 : 1
+                    z: (win.effectivePage === 7 || updatePageLayer.shown) ? 4 : 1
                     active: win.effectivePage === 7
                     animationsEnabled: win.pageTransitions
                     scaleEnabled: true
@@ -1054,7 +1059,7 @@ FluentWindow {
                     onClicked: win.clearGlobalSearch()
                 }
 
-                // v0.9 AI 助手入口（搜索框左侧）
+                // AI 助手入口（搜索框左侧，跟随居中搜索框）
                 Item {
                     id: aiEntryButton
                     objectName: "AIEntryButton"
@@ -1062,8 +1067,8 @@ FluentWindow {
                     height: 38
                     anchors.top: parent.top
                     anchors.topMargin: 18
-                    anchors.right: parent.right
-                    anchors.rightMargin: 270
+                    anchors.right: globalSearchBox.left
+                    anchors.rightMargin: 10
 
                     Rectangle {
                         anchors.fill: parent
@@ -1088,15 +1093,16 @@ FluentWindow {
                     }
                 }
 
-                // 搜索框
+                // 搜索框（v0.11：顶部水平居中，相对整个窗口）
                 Item {
                     id: globalSearchBox
-                    width: 236
+                    objectName: "GlobalSearchBox"
+                    width: Math.min(460, parent.width * 0.4,
+                                    Math.max(380, Math.round(parent.width * 0.32)))
                     height: 38
                     anchors.top: parent.top
                     anchors.topMargin: 18
-                    anchors.right: parent.right
-                    anchors.rightMargin: 24
+                    anchors.horizontalCenter: parent.horizontalCenter
 
                     Rectangle {
                         anchors.fill: parent

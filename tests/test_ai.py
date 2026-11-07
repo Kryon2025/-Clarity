@@ -127,6 +127,63 @@ class AIServiceTest(unittest.TestCase):
             self.assertEqual(self.service.api_base(), base)
             self.assertEqual(self.service.model(), model)
 
+    def test_legacy_deepseek_model_migrated(self) -> None:
+        path = Path(self._tmp.name) / "legacy_settings.json"
+        settings = Settings(path)
+        settings.set("ai_provider", "deepseek")
+        settings.set("ai_api_base", "https://api.deepseek.com/v1")
+        for legacy in ("deepseek-chat", "deepseek-reasoner"):
+            settings.set("ai_model", legacy)
+            service = AIService(settings)
+            try:
+                self.assertEqual(service.model(), "deepseek-flash")
+                self.assertEqual(settings.get("ai_model"), "deepseek-flash")
+            finally:
+                service.shutdown()
+        # 非 DeepSeek 服务商不受影响
+        settings.set("ai_provider", "groq")
+        settings.set("ai_model", "deepseek-chat")
+        service = AIService(settings)
+        try:
+            self.assertEqual(service.model(), "deepseek-chat")
+        finally:
+            service.shutdown()
+
+    def test_validate_presets(self) -> None:
+        self.assertEqual(ai_module.validate_presets(), [])
+        for provider in ai_module.PROVIDERS.values():
+            models = list(provider.get("models") or [])
+            if models:
+                self.assertIn(provider["default_model"], models)
+        self.assertEqual(PROVIDERS["deepseek"]["default_model"], "deepseek-flash")
+        self.assertIn("deepseek-flash", PROVIDERS["deepseek"]["models"])
+        self.assertNotIn("deepseek-chat", PROVIDERS["deepseek"]["models"])
+        self.assertNotIn("deepseek-reasoner", PROVIDERS["deepseek"]["models"])
+        self.assertEqual(PROVIDERS["pollinations"]["default_model"], "openai-fast")
+        self.assertEqual(ai_module.migrate_legacy_model("deepseek", "deepseek-chat"), "deepseek-flash")
+        self.assertEqual(ai_module.migrate_legacy_model("groq", "deepseek-chat"), "deepseek-chat")
+
+    def test_bridge_migrates_legacy_model_on_start(self) -> None:
+        path = Path(self._tmp.name) / "settings.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "ai_provider": "deepseek",
+                    "ai_api_base": "https://api.deepseek.com/v1",
+                    "ai_model": "deepseek-reasoner",
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        from shenqing.bridge.app_bridge import AppBridge as Bridge
+
+        other = Bridge()
+        try:
+            self.assertEqual(other._settings.get("ai_model"), "deepseek-flash")
+        finally:
+            other._shutdown_services()
+
     def test_fetch_models_parses_and_dedupes(self) -> None:
         payload = {"data": [{"id": "model-a"}, {"id": "model-b"}, {"id": "model-a"}]}
         with mock.patch.object(

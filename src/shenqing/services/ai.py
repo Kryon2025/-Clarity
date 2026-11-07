@@ -158,6 +158,36 @@ def provider_list() -> list[dict]:
     ]
 
 
+#: 已下线的旧模型名 → 新模型（DeepSeek 新模型自带思考，reasoner 也并到 flash）
+LEGACY_MODEL_MIGRATIONS = {
+    "deepseek-chat": "deepseek-flash",
+    "deepseek-reasoner": "deepseek-flash",
+}
+
+
+def migrate_legacy_model(provider: str, model: str) -> str:
+    """把旧模型名映射到当前在售模型；非 DeepSeek 原样返回。"""
+    value = str(model or "").strip()
+    if str(provider or "") != "deepseek":
+        return value
+    return LEGACY_MODEL_MIGRATIONS.get(value, value)
+
+
+def validate_presets() -> list[str]:
+    """检查预设一致性（默认模型必须在候选列表、非 custom 必须有 base）。"""
+    issues: list[str] = []
+    for key, item in PROVIDERS.items():
+        models = list(item.get("models") or [])
+        default = str(item.get("default_model") or "")
+        if models and default not in models:
+            issues.append(f"{key}: default_model {default!r} 不在 models 里")
+        if not models and default:
+            issues.append(f"{key}: 有 default_model 但 models 为空")
+        if key != "custom" and not str(item.get("base") or ""):
+            issues.append(f"{key}: base 为空")
+    return issues
+
+
 def provider_needs_key(provider: str) -> bool:
     return bool(PROVIDERS.get(str(provider or ""), {}).get("needs_key", True))
 
@@ -308,6 +338,15 @@ class AIService:
     def __init__(self, settings) -> None:  # noqa: ANN001
         self._settings = settings
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="shenqing-ai")
+        # 启动时迁移已下线的旧模型名（如 deepseek-chat / deepseek-reasoner）
+        self._migrate_legacy_model()
+
+    def _migrate_legacy_model(self) -> str:
+        raw = str(self._settings.get("ai_model", "") or "")
+        mapped = migrate_legacy_model(self.provider(), raw)
+        if mapped != raw:
+            self._settings.set("ai_model", mapped)
+        return mapped
 
     # ---------- 配置 ----------
     def enabled(self) -> bool:
@@ -348,7 +387,13 @@ class AIService:
         return str(self._settings.get("ai_reasoning_effort", "") or "")
 
     def model(self) -> str:
-        return str(self._settings.get("ai_model", "") or self.preset()["default_model"] or "")
+        raw = str(self._settings.get("ai_model", "") or "")
+        mapped = migrate_legacy_model(self.provider(), raw)
+        if mapped != raw:
+            # 读取到旧模型名时自动写回新模型
+            self._settings.set("ai_model", mapped)
+            raw = mapped
+        return raw or self.preset()["default_model"] or ""
 
     def configured(self) -> bool:
         """免 Key 服务商恒为可聊；其余需要启用 + Key。"""
@@ -371,6 +416,7 @@ class AIService:
             else:
                 self._settings.set("ai_api_base", PROVIDERS[key]["base"])
                 self._settings.set("ai_model", PROVIDERS[key]["default_model"])
+        self._migrate_legacy_model()
         return True
 
     # ---------- 脱敏 ----------

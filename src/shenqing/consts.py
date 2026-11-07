@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.11.0"
+APP_VERSION = "0.11.1"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,23 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.11.1",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "修复 AI 页布局错位：服务商/模型下拉贴输入框展开并夹紧在页面内，配置与对话区不再重叠",
+            "恢复页面打开/关闭动画：AI、更新、主题、关于页统一 200ms 淡入上移 / 160ms 淡出下移",
+            "全局搜索框居中移到窗口顶部，页面内容预留顶部空间",
+            "DeepSeek 旧模型名（deepseek-chat / deepseek-reasoner）自动迁移为 deepseek-flash",
+        ],
+        "items_en": [
+            "Fixed AI page layout: provider/model dropdowns now open below their fields and stay inside the page; config and chat cards no longer overlap",
+            "Restored page open/close animations for AI, Updates, Themes and About (200ms fade-in, 160ms fade-out)",
+            "Global search moved to the horizontal center of the window top",
+            "Legacy DeepSeek model names (deepseek-chat / deepseek-reasoner) migrate to deepseek-flash",
+        ],
+    },
     {
         "version": "0.11.0",
         "date": "2025-11-07",

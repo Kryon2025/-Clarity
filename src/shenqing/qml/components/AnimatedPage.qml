@@ -15,6 +15,8 @@ Item {
     default property alias content: stage.data
 
     visible: stage.opacity > 0.001
+    // 退出动画期间仍为 true，供外层保持 z 序（浮层页关闭时不被底层盖住）
+    readonly property bool shown: stage.opacity > 0.001
     enabled: root.active
 
     function applyShown() {

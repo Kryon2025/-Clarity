@@ -8,9 +8,15 @@ Item {
     id: page
     property Item glassSource: null
     property bool animationsEnabled: true
-    property bool configOpen: false
+    property bool configOpen: true
     property bool providerMenuOpen: false
     property bool modelMenuOpen: false
+    property real providerMenuX: 0
+    property real providerMenuY: 0
+    property real providerMenuW: 260
+    property real modelMenuX: 0
+    property real modelMenuY: 0
+    property real modelMenuW: 260
     property int providerIndex: 0
     property string modelDraft: ""
     property string baseDraft: ""
@@ -35,7 +41,7 @@ Item {
         var source = (typeof App !== "undefined" && App.aiProviders !== undefined && App.aiProviders !== null
                       && App.aiProviders.length > 0) ? App.aiProviders : [
             { id: "deepseek", label: "DeepSeek", base: "https://api.deepseek.com/v1",
-              models: ["deepseek-chat", "deepseek-reasoner"], capabilities: ["reasoning"] },
+              models: ["deepseek-flash", "deepseek-v4-pro"], capabilities: ["reasoning"] },
             { id: "mimo", label: qsTr("小米 MiMo"), base: "https://api.xiaomimimo.com/v1",
               models: ["mimo-v2.6-flash", "mimo-v2.6-pro"] },
             { id: "openai", label: "ChatGPT", base: "https://api.openai.com/v1",
@@ -163,6 +169,30 @@ Item {
         var symbol = currency === "CNY" ? "¥" : (currency === "USD" ? "$" : currency + " ")
         return (tokens <= 0 && cost <= 0) ? ""
                : qsTr("上次回复 %1 tokens · %2%3（估算）").arg(tokens).arg(symbol).arg(cost.toFixed(4))
+    }
+    function openProviderMenu(anchor) {
+        var point = anchor.mapToItem(page, 0, anchor.height + 4)
+        page.providerMenuW = Math.max(200, anchor.width)
+        page.providerMenuX = Math.max(10, Math.min(page.width - page.providerMenuW - 10, point.x))
+        page.providerMenuY = Math.max(10, Math.min(page.height - 260, point.y))
+        page.providerMenuOpen = true
+        page.modelMenuOpen = false
+    }
+    function openModelMenu(anchor) {
+        var point = anchor.mapToItem(page, 0, anchor.height + 4)
+        page.modelMenuW = Math.max(200, anchor.width)
+        page.modelMenuX = Math.max(10, Math.min(page.width - page.modelMenuW - 10, point.x))
+        page.modelMenuY = Math.max(10, Math.min(page.height - 230, point.y))
+        page.modelMenuOpen = true
+        page.providerMenuOpen = false
+    }
+    onProviderMenuOpenChanged: {
+        if (!page.providerMenuOpen) return
+        var anchor = page.configOpen ? configProviderField : providerButton
+        var point = anchor.mapToItem(page, 0, anchor.height + 4)
+        page.providerMenuW = Math.max(200, anchor.width)
+        page.providerMenuX = Math.max(10, Math.min(page.width - page.providerMenuW - 10, point.x))
+        page.providerMenuY = Math.max(10, Math.min(page.height - 260, point.y))
     }
     function init() {
         if (typeof App !== "undefined" && App.aiProvider !== undefined) {
@@ -394,6 +424,7 @@ Item {
                                 width: parent.width
                                 spacing: 8
                                 Item {
+                                    id: providerButton
                                     width: Math.min(240, providerButtonText.implicitWidth + (page.freeProvider ? 92 : 56))
                                     height: 32
                                     Rectangle {
@@ -419,7 +450,7 @@ Item {
                                         }
                                     }
                                     Text { anchors.right: parent.right; anchors.rightMargin: 9; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: 11 }
-                                    MouseArea { id: providerButtonArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.providerMenuOpen = !page.providerMenuOpen }
+                                    MouseArea { id: providerButtonArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.openProviderMenu(providerButton) }
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -685,6 +716,7 @@ Item {
                                 height: 30
                                 Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: qsTr("服务商"); color: AppTheme.textSecondary; font.pixelSize: 11; font.family: C.numFont; width: 52 }
                                 Item {
+                                    id: configProviderField
                                     anchors.left: parent.left
                                     anchors.leftMargin: 52
                                     anchors.right: parent.right
@@ -693,7 +725,7 @@ Item {
                                     Rectangle { anchors.fill: parent; radius: 8; color: AppTheme.cardBgAlt; border.width: 1; border.color: configProviderArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder }
                                     Text { anchors.left: parent.left; anchors.leftMargin: 9; anchors.verticalCenter: parent.verticalCenter; text: page.providerLabel; color: AppTheme.textPrimary; font.pixelSize: 11; font.family: C.numFont }
                                     Text { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: 11 }
-                                    MouseArea { id: configProviderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.providerMenuOpen = !page.providerMenuOpen }
+                                    MouseArea { id: configProviderArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.openProviderMenu(configProviderField) }
                                 }
                             }
                             Row {
@@ -719,7 +751,7 @@ Item {
                                     width: 24
                                     height: 28
                                     Text { anchors.centerIn: parent; text: "▾"; color: AppTheme.textTertiary; font.pixelSize: 11 }
-                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.modelMenuOpen = !page.modelMenuOpen }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.openModelMenu(modelInput) }
                                 }
                                 Item {
                                     width: 52
@@ -845,20 +877,24 @@ Item {
         }
     }
 
-    // 服务商下拉
+    // 服务商下拉：贴输入框下方、宽度一致、夹紧在页面内
     Item {
         visible: page.providerMenuOpen
-        z: 60
-        x: Math.round((flick.width - pageColumn.width) / 2)
-        y: 136
-        width: 300
-        height: providerPopupColumn.height + 8
+        z: 200
+        x: page.providerMenuX
+        y: page.providerMenuY
+        width: page.providerMenuW
+        height: Math.min(240, providerPopupColumn.height + 8)
         Rectangle { anchors.fill: parent; radius: 12; color: AppTheme.cardBg; border.width: 1; border.color: AppTheme.cardBorderStrong }
-        Column {
+        Flickable {
+            anchors.fill: parent
+            anchors.margins: 4
+            contentWidth: width
+            contentHeight: providerPopupColumn.height
+            clip: true
+            Column {
             id: providerPopupColumn
-            x: 6
-            y: 4
-            width: parent.width - 12
+            width: parent.width
             spacing: 2
             Repeater {
                 model: page.providerList
@@ -887,17 +923,18 @@ Item {
                     MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: page.selectProvider(index) }
                 }
             }
+            }
         }
     }
 
     // 模型下拉
     Item {
         visible: page.modelMenuOpen
-        z: 60
-        x: Math.round((flick.width - pageColumn.width) / 2) + pageColumn.width - 300
-        y: 300
-        width: 300
-        height: Math.min(220, modelPopupColumn.height + 8)
+        z: 200
+        x: page.modelMenuX
+        y: page.modelMenuY
+        width: page.modelMenuW
+        height: Math.min(230, modelPopupColumn.height + 8)
         Rectangle { anchors.fill: parent; radius: 12; color: AppTheme.cardBg; border.width: 1; border.color: AppTheme.cardBorderStrong }
         Flickable {
             anchors.fill: parent
