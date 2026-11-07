@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shenqing"
-version = "0.12.0"
+version = "0.12.1"
 description = "深清（身轻）— Windows 专注锁机工具"
 readme = "README.md"
 requires-python = ">=3.10"

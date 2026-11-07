@@ -269,6 +269,7 @@ Item {
         var text = String(page.query).trim()
         if (text.length === 0 || !page.configured) return
         if (typeof App !== "undefined" && typeof App.aiAsk === "function") App.aiAsk(text)
+        page.query = ""
     }
     function resetUsage() {
         if (typeof App !== "undefined" && typeof App.resetAIUsage === "function") App.resetAIUsage()
