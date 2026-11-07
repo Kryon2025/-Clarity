@@ -6,6 +6,7 @@ v0.2：数据模型改为「空间（Space）」，会话围绕空间展开：
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import threading
@@ -124,6 +125,8 @@ class AppBridge(QObject):
     appUsageChanged = Signal()
     aiChanged = Signal()
     aiModelsChanged = Signal()
+    aiChatsChanged = Signal()
+    aiUsageChanged = Signal()
     languageChanged = Signal(str)
     _catalogScanned = Signal(list)
     #: 自动更新：后台线程 → 主线程
@@ -186,6 +189,16 @@ class AppBridge(QObject):
         self._ai_models: list[str] = []
         self._ai_models_state = "idle"
         self._ai_models_error = ""
+        # v0.11：费用用量 + 对话历史
+        self._ai_chats_path = app_data_dir() / "ai_chats.json"
+        self._ai_usage_path = app_data_dir() / "ai_usage.json"
+        self._ai_chats: dict = {"currentId": "", "conversations": []}
+        self._ai_usage: dict = {}
+        self._ai_last_usage: dict = {}
+        self._ai_usage_currency = ""
+        self._ai_pending_conv = ""
+        self._load_ai_chats()
+        self._load_ai_usage()
         # v0.9 应用使用时长统计（前台应用 5s 采样）
         self._app_usage = app_usage.AppUsageTracker(
             now_provider=timesync.now, parent=self
@@ -870,9 +883,58 @@ class AppBridge(QObject):
         self._settings.set("ai_enabled", bool(enabled))
         self.settingsChanged.emit()
 
+    @Property(bool, notify=settingsChanged)
+    def aiNeedsKey(self) -> bool:
+        return self._ai.needs_key()
+
+    @Property(bool, notify=settingsChanged)
+    def aiSupportsReasoning(self) -> bool:
+        return self._ai.supports_reasoning()
+
+    @Property(bool, notify=settingsChanged)
+    def aiSupportsWebSearch(self) -> bool:
+        return self._ai.supports_web_search()
+
+    @Property(bool, notify=settingsChanged)
+    def aiReasoningEnabled(self) -> bool:
+        return self._ai.reasoning_enabled()
+
+    @Slot(bool)
+    def setAIReasoningEnabled(self, enabled: bool) -> None:
+        self._settings.set("ai_reasoning_enabled", bool(enabled))
+        self.settingsChanged.emit()
+
+    @Property(bool, notify=settingsChanged)
+    def aiWebSearchEnabled(self) -> bool:
+        return self._ai.web_search_enabled()
+
+    @Slot(bool)
+    def setAIWebSearchEnabled(self, enabled: bool) -> None:
+        self._settings.set("ai_web_search_enabled", bool(enabled))
+        self.settingsChanged.emit()
+
+    @Property(str, notify=settingsChanged)
+    def aiReasoningEffort(self) -> str:
+        return self._ai.reasoning_effort()
+
+    @Slot(str)
+    def setAIReasoningEffort(self, effort: str) -> None:
+        self._settings.set("ai_reasoning_effort", str(effort or "").strip())
+        self.settingsChanged.emit()
+
     @Property(list, constant=True)
     def aiProviders(self) -> list[dict]:
-        return ai_service.provider_list()
+        providers = ai_service.provider_list()
+        for item in providers:
+            if item.get("value") == "custom":
+                # 自定义服务商的思考/联网能力由用户开关决定
+                item["supports_reasoning"] = bool(
+                    self._settings.get("ai_reasoning_enabled", True)
+                )
+                item["supports_web_search"] = bool(
+                    self._settings.get("ai_web_search_enabled", False)
+                )
+        return providers
 
     @Property(str, notify=settingsChanged)
     def aiProvider(self) -> str:
@@ -892,7 +954,7 @@ class AppBridge(QObject):
         self._ai_models_error = ""
         self.aiModelsChanged.emit()
         self.settingsChanged.emit()
-        if self._ai.has_key():
+        if (not self._ai.needs_key()) or self._ai.has_key():
             QTimer.singleShot(0, self.fetchAIModels)
 
     # ---------- 模型列表（/models） ----------
@@ -925,10 +987,14 @@ class AppBridge(QObject):
             return
         key = self._ai.api_key()
         base = self._ai.api_base()
-        if not key or not base:
+        if not base or (self._ai.needs_key() and not key):
             self._ai_models = []
             self._ai_models_state = "error"
-            self._ai_models_error = "请先填写 API Key 与 API Base"
+            self._ai_models_error = (
+                "请先填写 API Key 与 API Base"
+                if self._ai.needs_key()
+                else "请先填写 API Base"
+            )
             self.aiModelsChanged.emit()
             return
         provider = self._ai.provider()
@@ -1051,6 +1117,9 @@ class AppBridge(QObject):
             self._ai_answer = ""
             self.aiChanged.emit()
             return
+        conversation = self._ensure_current_conversation()
+        self._ai_pending_conv = str(conversation.get("id") or "")
+        self._append_ai_message(conversation, "user", text)
         self._start_ai_job("ask", text)
 
     @Slot(str)
@@ -1065,6 +1134,7 @@ class AppBridge(QObject):
         self._ai_answer = ""
         self._ai_error = ""
         self._ai_mode = ""
+        self._ai_pending_conv = ""
         self.aiChanged.emit()
 
     @Slot()
@@ -1120,6 +1190,20 @@ class AppBridge(QObject):
                         self._ai_error[:80]
                     )
                 )
+        usage = data.get("usage")
+        if isinstance(usage, dict) and usage:
+            self._record_ai_usage(usage)
+        if mode == "ask":
+            conversation = self._find_conversation(self._ai_pending_conv)
+            self._ai_pending_conv = ""
+            if conversation is not None and data.get("ok"):
+                self._append_ai_message(
+                    conversation,
+                    "assistant",
+                    self._ai_answer,
+                    reasoning=str(data.get("reasoning") or ""),
+                    tokens=int((usage or {}).get("total_tokens") or 0),
+                )
         self.aiChanged.emit()
 
     @Slot(str, result=list)
@@ -1134,6 +1218,265 @@ class AppBridge(QObject):
         except Exception as exc:  # noqa: BLE001
             logger.info("AI 设置搜索失败，回退本地匹配：%s", self._ai.sanitize(exc))
             return ai_service.local_search(text, items)
+
+    # ================= v0.11 对话历史 / 费用用量 =================
+    def _load_ai_chats(self) -> None:
+        data = None
+        try:
+            if self._ai_chats_path.exists():
+                data = json.loads(self._ai_chats_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, ValueError):
+            data = None
+        conversations: list[dict] = []
+        current_id = ""
+        if isinstance(data, dict):
+            raw = data.get("conversations")
+            if isinstance(raw, list):
+                for item in raw:
+                    if not isinstance(item, dict):
+                        continue
+                    conversation_id = str(item.get("id") or "").strip()
+                    if not conversation_id:
+                        continue
+                    messages = []
+                    for message in item.get("messages") or []:
+                        if not isinstance(message, dict):
+                            continue
+                        messages.append(
+                            {
+                                "role": str(message.get("role") or "user"),
+                                "content": str(message.get("content") or ""),
+                                "reasoning": str(message.get("reasoning") or ""),
+                                "time": str(message.get("time") or ""),
+                                "tokens": int(message.get("tokens") or 0),
+                            }
+                        )
+                    conversations.append(
+                        {
+                            "id": conversation_id,
+                            "title": str(item.get("title") or "新对话"),
+                            "createdAt": str(item.get("createdAt") or ""),
+                            "updatedAt": str(item.get("updatedAt") or ""),
+                            "messages": messages,
+                        }
+                    )
+            current_id = str(data.get("currentId") or "")
+        if not any(conversation["id"] == current_id for conversation in conversations):
+            current_id = conversations[0]["id"] if conversations else ""
+        self._ai_chats = {"currentId": current_id, "conversations": conversations}
+
+    def _save_ai_chats(self) -> None:
+        try:
+            self._ai_chats_path.parent.mkdir(parents=True, exist_ok=True)
+            self._ai_chats_path.write_text(
+                json.dumps(self._ai_chats, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except OSError as exc:
+            logger.warning("保存 AI 对话历史失败：%s", exc)
+
+    def _find_conversation(self, conversation_id: str) -> dict | None:
+        target = str(conversation_id or "")
+        if not target:
+            return None
+        for conversation in self._ai_chats.get("conversations", []):
+            if str(conversation.get("id")) == target:
+                return conversation
+        return None
+
+    def _current_conversation(self) -> dict | None:
+        return self._find_conversation(self._ai_chats.get("currentId", ""))
+
+    def _new_conversation(self, title: str = "新对话") -> dict:
+        import uuid
+
+        now = timesync.now().isoformat(timespec="seconds")
+        conversation = {
+            "id": "chat_" + uuid.uuid4().hex[:10],
+            "title": str(title or "新对话")[:24],
+            "createdAt": now,
+            "updatedAt": now,
+            "messages": [],
+        }
+        self._ai_chats.setdefault("conversations", []).append(conversation)
+        return conversation
+
+    def _ensure_current_conversation(self) -> dict:
+        conversation = self._current_conversation()
+        if conversation is not None:
+            return conversation
+        conversation = self._new_conversation()
+        self._ai_chats["currentId"] = conversation["id"]
+        self._save_ai_chats()
+        self.aiChatsChanged.emit()
+        return conversation
+
+    def _append_ai_message(
+        self,
+        conversation: dict,
+        role: str,
+        content: str,
+        *,
+        reasoning: str = "",
+        tokens: int = 0,
+    ) -> None:
+        now = timesync.now().isoformat(timespec="seconds")
+        message = {
+            "role": str(role),
+            "content": str(content or ""),
+            "reasoning": str(reasoning or ""),
+            "time": now,
+            "tokens": int(tokens or 0),
+        }
+        conversation.setdefault("messages", []).append(message)
+        conversation["updatedAt"] = now
+        if role == "user":
+            if str(conversation.get("title") or "") in ("", "新对话"):
+                title = str(content or "").strip().replace("\n", " ")[:24]
+                conversation["title"] = title or "新对话"
+        self._save_ai_chats()
+        self.aiChatsChanged.emit()
+
+    @Property(list, notify=aiChatsChanged)
+    def aiConversations(self) -> list[dict]:
+        items = []
+        for conversation in self._ai_chats.get("conversations", []):
+            items.append(
+                {
+                    "id": str(conversation.get("id") or ""),
+                    "title": str(conversation.get("title") or "新对话"),
+                    "updatedAt": str(conversation.get("updatedAt") or ""),
+                    "count": len(conversation.get("messages") or []),
+                }
+            )
+        items.sort(key=lambda item: item["updatedAt"], reverse=True)
+        return items
+
+    @Property(list, notify=aiChatsChanged)
+    def aiMessages(self) -> list[dict]:
+        conversation = self._current_conversation()
+        if conversation is None:
+            return []
+        return [dict(message) for message in conversation.get("messages") or []]
+
+    @Slot()
+    def newAIConversation(self) -> None:
+        conversation = self._new_conversation()
+        self._ai_chats["currentId"] = conversation["id"]
+        self._save_ai_chats()
+        self.aiChatsChanged.emit()
+
+    @Slot(str, result=bool)
+    def selectAIConversation(self, conversation_id: str) -> bool:
+        conversation = self._find_conversation(conversation_id)
+        if conversation is None:
+            return False
+        self._ai_chats["currentId"] = conversation["id"]
+        self._save_ai_chats()
+        self.aiChatsChanged.emit()
+        return True
+
+    @Slot(str, result=bool)
+    def deleteAIConversation(self, conversation_id: str) -> bool:
+        conversation = self._find_conversation(conversation_id)
+        if conversation is None:
+            return False
+        self._ai_chats["conversations"].remove(conversation)
+        if str(self._ai_chats.get("currentId")) == str(conversation["id"]):
+            remaining = self._ai_chats.get("conversations") or []
+            self._ai_chats["currentId"] = str(remaining[0]["id"]) if remaining else ""
+        self._save_ai_chats()
+        self.aiChatsChanged.emit()
+        return True
+
+    # ---------- 费用 / 用量 ----------
+    def _load_ai_usage(self) -> None:
+        try:
+            data = json.loads(self._ai_usage_path.read_text(encoding="utf-8")) if self._ai_usage_path.exists() else None
+        except (OSError, json.JSONDecodeError, ValueError):
+            data = None
+        self._ai_usage = data if isinstance(data, dict) else {}
+        self._ai_last_usage = {}
+        self._ai_usage_currency = ""
+
+    def _save_ai_usage(self) -> None:
+        try:
+            self._ai_usage_path.parent.mkdir(parents=True, exist_ok=True)
+            self._ai_usage_path.write_text(
+                json.dumps(self._ai_usage, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except OSError as exc:
+            logger.warning("保存 AI 用量失败：%s", exc)
+
+    def _record_ai_usage(self, usage: dict) -> None:
+        model = str(usage.get("model") or self._ai.model())
+        provider = str(usage.get("provider") or self._ai.provider())
+        try:
+            tokens_in = max(0, int(usage.get("prompt_tokens") or 0))
+            tokens_out = max(0, int(usage.get("completion_tokens") or 0))
+            cost = max(0.0, float(usage.get("cost") or 0.0))
+        except (TypeError, ValueError):
+            tokens_in = tokens_out = 0
+            cost = 0.0
+        currency = str(usage.get("currency") or "CNY")
+        day = timesync.today().isoformat()
+        entry = self._ai_usage.setdefault(
+            day, {"tokens_in": 0, "tokens_out": 0, "cost": 0.0, "by_provider": {}}
+        )
+        entry["tokens_in"] = int(entry.get("tokens_in", 0)) + tokens_in
+        entry["tokens_out"] = int(entry.get("tokens_out", 0)) + tokens_out
+        entry["cost"] = round(float(entry.get("cost", 0.0)) + cost, 8)
+        by_provider = entry.setdefault("by_provider", {})
+        provider_entry = by_provider.setdefault(
+            provider, {"tokens_in": 0, "tokens_out": 0, "cost": 0.0, "currency": currency}
+        )
+        provider_entry["tokens_in"] = int(provider_entry.get("tokens_in", 0)) + tokens_in
+        provider_entry["tokens_out"] = int(provider_entry.get("tokens_out", 0)) + tokens_out
+        provider_entry["cost"] = round(float(provider_entry.get("cost", 0.0)) + cost, 8)
+        provider_entry["currency"] = currency
+        self._ai_last_usage = {
+            "model": model,
+            "provider": provider,
+            "prompt_tokens": tokens_in,
+            "completion_tokens": tokens_out,
+            "cost": round(cost, 6),
+            "currency": currency,
+        }
+        self._ai_usage_currency = currency
+        self._save_ai_usage()
+        self.aiUsageChanged.emit()
+
+    def _today_usage(self) -> dict:
+        return self._ai_usage.get(timesync.today().isoformat(), {})
+
+    @Property(int, notify=aiUsageChanged)
+    def aiTodayTokens(self) -> int:
+        entry = self._today_usage()
+        return int(entry.get("tokens_in", 0)) + int(entry.get("tokens_out", 0))
+
+    @Property(float, notify=aiUsageChanged)
+    def aiTodayCost(self) -> float:
+        return round(float(self._today_usage().get("cost", 0.0)), 6)
+
+    @Property(str, notify=aiUsageChanged)
+    def aiCurrency(self) -> str:
+        if self._ai_usage_currency:
+            return self._ai_usage_currency
+        return str(
+            ai_service.provider_pricing(self._ai.provider(), self._ai.model()).get("currency")
+            or "CNY"
+        )
+
+    @Property(dict, notify=aiUsageChanged)
+    def aiLastUsage(self) -> dict:
+        return dict(self._ai_last_usage)
+
+    @Slot()
+    def resetAIUsage(self) -> None:
+        self._ai_usage = {}
+        self._ai_last_usage = {}
+        self._ai_usage_currency = ""
+        self._save_ai_usage()
+        self.aiUsageChanged.emit()
 
     # ================= v0.9 应用使用时长 =================
     @Property(str, notify=statsChanged)
@@ -1214,6 +1557,11 @@ class AppBridge(QObject):
             self._app_usage.shutdown()
         except Exception as exc:  # noqa: BLE001
             logger.warning("停止应用使用统计失败：%s", exc)
+        try:
+            self._save_ai_chats()
+            self._save_ai_usage()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("保存 AI 历史/用量失败：%s", exc)
         try:
             self._ai.shutdown()
         except Exception as exc:  # noqa: BLE001

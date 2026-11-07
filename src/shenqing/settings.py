@@ -26,6 +26,9 @@ DEFAULTS: dict[str, Any] = {
     "ai_api_key": "",
     "ai_model": "",
     "ai_models_cache": {},  # provider -> {models:[...], fetchedAt}（24h 过期）
+    "ai_reasoning_enabled": True,   # 思考模式（DeepSeek thinking / OpenAI reasoning_effort）
+    "ai_web_search_enabled": False,  # 联网检索（DeepSeek / GLM）
+    "ai_reasoning_effort": "",       # 可选：low / medium / high（OpenAI/DeepSeek）
     "volume_panel": 50,     # dock 设置面板上次的系统音量（0-100）
     "onboarding_done": False,  # 首次使用引导是否完成
     "countdown_date": "",      # 倒数日目标日期 YYYY-MM-DD（空=不显示）

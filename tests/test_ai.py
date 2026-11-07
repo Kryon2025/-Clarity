@@ -80,14 +80,36 @@ class AIServiceTest(unittest.TestCase):
         providers = {item["value"]: item for item in ai_module.provider_list()}
         self.assertEqual(
             set(providers),
-            {"groq", "glm", "siliconflow", "custom", "deepseek", "mimo", "openai"},
+            {
+                "groq",
+                "glm",
+                "siliconflow",
+                "custom",
+                "deepseek",
+                "mimo",
+                "openai",
+                "pollinations",
+            },
         )
         self.assertIn("Qwen/Qwen2.5-7B-Instruct", providers["siliconflow"]["models"])
         self.assertEqual(providers["glm"]["id"], "glm")
-        # v0.10 新预设：base / 默认模型 / 候选
+        # v0.11 预设：deepseek 新模型 / 免 Key pollinations / 能力元数据
         self.assertEqual(providers["deepseek"]["base"], "https://api.deepseek.com/v1")
-        self.assertEqual(providers["deepseek"]["models"], ["deepseek-chat", "deepseek-reasoner"])
-        self.assertEqual(providers["deepseek"]["models"][0], "deepseek-chat")
+        self.assertEqual(providers["deepseek"]["models"], ["deepseek-flash", "deepseek-v4-pro"])
+        self.assertEqual(providers["deepseek"]["models"][0], "deepseek-flash")
+        self.assertTrue(providers["deepseek"]["supports_reasoning"])
+        self.assertTrue(providers["deepseek"]["supports_web_search"])
+        self.assertEqual(providers["deepseek"]["pricing"]["input"], 0.5)
+        self.assertEqual(providers["deepseek"]["pricing"]["currency"], "CNY")
+        self.assertFalse(providers["pollinations"]["needs_key"])
+        self.assertEqual(
+            providers["pollinations"]["base"], "https://text.pollinations.ai/openai"
+        )
+        self.assertEqual(providers["pollinations"]["models"], ["openai-fast"])
+        self.assertEqual(providers["pollinations"]["pricing"]["input"], 0.0)
+        self.assertTrue(providers["openai"]["supports_reasoning"])
+        self.assertTrue(providers["glm"]["supports_web_search"])
+        self.assertTrue(providers["custom"]["needs_key"])
         self.assertEqual(providers["mimo"]["base"], "https://api.xiaomimimo.com/v1")
         self.assertEqual(providers["mimo"]["models"][0], "mimo-v2.6-flash")
         self.assertIn("mimo-v2.6-pro", providers["mimo"]["models"])
@@ -96,9 +118,10 @@ class AIServiceTest(unittest.TestCase):
 
     def test_provider_switch_defaults(self) -> None:
         for provider, base, model in (
-            ("deepseek", "https://api.deepseek.com/v1", "deepseek-chat"),
+            ("deepseek", "https://api.deepseek.com/v1", "deepseek-flash"),
             ("mimo", "https://api.xiaomimimo.com/v1", "mimo-v2.6-flash"),
             ("openai", "https://api.openai.com/v1", "gpt-4o-mini"),
+            ("pollinations", "https://text.pollinations.ai/openai", "openai-fast"),
         ):
             self.assertTrue(self.service.set_provider(provider))
             self.assertEqual(self.service.api_base(), base)
@@ -263,6 +286,9 @@ class AIBridgeTest(unittest.TestCase):
         self.bridge.setAIModel(PROVIDERS["groq"]["default_model"])
         self.bridge.setAIProvider("groq")
         self.bridge.setAIEnabled(True)
+        # v0.11 追加的服务层用例复用 bridge 的 settings / AIService
+        self.settings = self.bridge._settings
+        self.service = self.bridge._ai
 
     def tearDown(self) -> None:
         self.bridge._shutdown_services()
@@ -278,7 +304,8 @@ class AIBridgeTest(unittest.TestCase):
         self.assertTrue(self.bridge.aiHasKey)
         self.assertEqual(self.bridge.aiProvider, "groq")
         providers = self.bridge.aiProviders
-        self.assertEqual(providers[0]["id"], "groq")
+        self.assertEqual(providers[0]["value"], "pollinations")
+        self.assertFalse(providers[0]["needs_key"])
         self.assertNotIn("SECRET_KEY_123456", json.dumps(providers))
 
     def test_ask_flow(self) -> None:
@@ -346,7 +373,7 @@ class AIBridgeTest(unittest.TestCase):
         self.assertTrue(fetch.called)
         self.assertEqual(bridge.aiProvider, "deepseek")
         self.assertEqual(bridge.aiBase, "https://api.deepseek.com/v1")
-        self.assertEqual(bridge.aiModel, "deepseek-chat")
+        self.assertEqual(bridge.aiModel, "deepseek-flash")
         self.assertEqual(bridge.aiModels, PROVIDERS["deepseek"]["models"])
         self.assertEqual(bridge.aiModelsState, "idle")
 
@@ -366,6 +393,241 @@ class AIBridgeTest(unittest.TestCase):
         self.assertEqual(bridge.aiModels, PROVIDERS["openai"]["models"])
         cache = bridge._settings.get("ai_models_cache", {})
         self.assertEqual(cache["groq"]["models"], ["old"])
+
+
+    def test_pollinations_configured_without_key(self) -> None:
+        self.settings.set("ai_enabled", False)
+        self.settings.set("ai_provider", "pollinations")
+        self.settings.set("ai_api_key", "")
+        self.settings.set("ai_api_base", "")
+        self.settings.set("ai_model", "")
+        service = AIService(self.settings)
+        try:
+            self.assertFalse(service.needs_key())
+            self.assertTrue(service.configured())
+            captured: dict = {}
+
+            def fake_urlopen(request, timeout=None):  # noqa: ANN001
+                captured["headers"] = {k.lower(): v for k, v in dict(request.headers).items()}
+                captured["payload"] = json.loads(request.data.decode("utf-8"))
+                return _Response(_chat_payload("免费回答"))
+
+            with mock.patch.object(ai_module.urllib.request, "urlopen", side_effect=fake_urlopen):
+                result = service.ask("你好")
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["text"], "免费回答")
+            self.assertNotIn("authorization", captured["headers"])
+        finally:
+            service.shutdown()
+
+    def test_deepseek_thinking_payload(self) -> None:
+        self.settings.set("ai_provider", "deepseek")
+        self.settings.set("ai_api_base", "https://api.deepseek.com/v1")
+        self.settings.set("ai_model", "deepseek-flash")
+        captured: dict = {}
+        response = _Response(_chat_payload("答"))
+        with mock.patch.object(
+            ai_module.urllib.request, "urlopen", side_effect=lambda request, timeout=None: captured.update(payload=json.loads(request.data.decode("utf-8"))) or response
+        ):
+            result = self.service.ask("你好")
+        self.assertTrue(result["ok"])
+        self.assertEqual(captured["payload"]["thinking"]["type"], "enabled")
+
+        self.settings.set("ai_reasoning_enabled", False)
+        captured.clear()
+        with mock.patch.object(
+            ai_module.urllib.request, "urlopen", side_effect=lambda request, timeout=None: captured.update(payload=json.loads(request.data.decode("utf-8"))) or response
+        ):
+            self.service.ask("你好")
+        self.assertEqual(captured["payload"]["thinking"]["type"], "disabled")
+
+    def test_reasoning_content_and_usage_cost(self) -> None:
+        self.settings.set("ai_provider", "deepseek")
+        self.settings.set("ai_api_base", "https://api.deepseek.com/v1")
+        self.settings.set("ai_model", "deepseek-flash")
+        payload = {
+            "choices": [
+                {"message": {"content": "答案", "reasoning_content": "思考过程"}}
+            ],
+            "usage": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500},
+        }
+        with mock.patch.object(ai_module.urllib.request, "urlopen", return_value=_Response(payload)):
+            result = self.service.ask("你好")
+        self.assertEqual(result["reasoning"], "思考过程")
+        usage = result["usage"]
+        self.assertEqual(usage["prompt_tokens"], 1000)
+        self.assertEqual(usage["completion_tokens"], 500)
+        self.assertEqual(usage["currency"], "CNY")
+        self.assertAlmostEqual(usage["cost"], 0.0005 + 0.0015, places=6)
+
+    def test_deepseek_web_search_injected(self) -> None:
+        self.settings.set("ai_provider", "deepseek")
+        self.settings.set("ai_api_base", "https://api.deepseek.com/v1")
+        self.settings.set("ai_model", "deepseek-flash")
+        self.settings.set("ai_web_search_enabled", True)
+        captured: dict = {}
+        response = _Response(_chat_payload("带联网答案"))
+        with (
+            mock.patch.object(
+                self.service, "deepseek_web_context", return_value="- 结果：今天天气晴"
+            ) as search,
+            mock.patch.object(
+                ai_module.urllib.request,
+                "urlopen",
+                side_effect=lambda request, timeout=None: captured.update(
+                    payload=json.loads(request.data.decode("utf-8"))
+                )
+                or response,
+            ),
+        ):
+            result = self.service.ask("今天天气")
+        self.assertTrue(result["ok"])
+        self.assertTrue(search.called)
+        system_text = captured["payload"]["messages"][0]["content"]
+        self.assertIn("今天天气晴", system_text)
+
+    def test_glm_web_search_tool_payload(self) -> None:
+        self.settings.set("ai_provider", "glm")
+        self.settings.set("ai_api_base", "https://open.bigmodel.cn/api/paas/v4")
+        self.settings.set("ai_model", "glm-4.7-flash")
+        self.settings.set("ai_web_search_enabled", True)
+        captured: dict = {}
+        response = _Response(_chat_payload("ok"))
+        with mock.patch.object(
+            ai_module.urllib.request,
+            "urlopen",
+            side_effect=lambda request, timeout=None: captured.update(
+                payload=json.loads(request.data.decode("utf-8"))
+            )
+            or response,
+        ):
+            self.service.ask("查询")
+        tools = captured["payload"].get("tools") or []
+        self.assertEqual(tools[0]["type"], "web_search")
+
+    def test_estimate_cost(self) -> None:
+        cost, currency = ai_module.estimate_cost("deepseek", "deepseek-v4-pro", 1_000_000, 1_000_000)
+        self.assertEqual(currency, "CNY")
+        self.assertAlmostEqual(cost, 10.0)
+        cost, _currency = ai_module.estimate_cost("pollinations", "openai-fast", 10_000, 10_000)
+        self.assertEqual(cost, 0.0)
+
+
+class AIHistoryBridgeTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        os.environ["SHENQING_DATA_DIR"] = self._tmp.name
+        os.environ["SHENQING_NO_SCAN"] = "1"
+        from shenqing.bridge.app_bridge import AppBridge
+
+        self.bridge = AppBridge()
+        self.bridge.setAIKey("SECRET_KEY_123456")
+        self.bridge.setAIBase(PROVIDERS["groq"]["base"])
+        self.bridge.setAIModel(PROVIDERS["groq"]["default_model"])
+        self.bridge.setAIProvider("groq")
+        self.bridge.setAIEnabled(True)
+        # v0.11 追加的服务层用例复用 bridge 的 settings / AIService
+        self.settings = self.bridge._settings
+        self.service = self.bridge._ai
+
+    def tearDown(self) -> None:
+        self.bridge._shutdown_services()
+        try:
+            self.bridge.deleteLater()
+        except RuntimeError:
+            pass
+        self._tmp.cleanup()
+        os.environ.pop("SHENQING_DATA_DIR", None)
+
+    def _fake_submit(self, result: dict):  # noqa: ANN202
+        def fake_submit(prompt, callback):  # noqa: ANN001
+            callback(result)
+
+        return fake_submit
+
+    def test_history_flow_and_persistence(self) -> None:
+        bridge = self.bridge
+        result = {
+            "ok": True,
+            "text": "回答",
+            "reasoning": "思考",
+            "error": "",
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15, "cost": 0.0, "currency": "CNY"},
+        }
+        with mock.patch.object(bridge._ai, "submit_ask", side_effect=self._fake_submit(result)):
+            bridge.askAI("这是第一个问题，标题应该取前二十四个字以内")
+        messages = bridge.aiMessages
+        self.assertEqual([item["role"] for item in messages], ["user", "assistant"])
+        self.assertEqual(messages[-1]["content"], "回答")
+        self.assertEqual(messages[-1]["reasoning"], "思考")
+        self.assertEqual(messages[-1]["tokens"], 15)
+        conversations = bridge.aiConversations
+        self.assertEqual(len(conversations), 1)
+        self.assertEqual(conversations[0]["count"], 2)
+        self.assertTrue(conversations[0]["title"].startswith("这是第一个问题"))
+        self.assertLessEqual(len(conversations[0]["title"]), 24)
+
+        # 新会话 / 切换 / 删除
+        bridge.newAIConversation()
+        self.assertEqual(bridge.aiMessages, [])
+        self.assertEqual(len(bridge.aiConversations), 2)
+        first_id = conversations[0]["id"]
+        self.assertTrue(bridge.selectAIConversation(first_id))
+        self.assertEqual(len(bridge.aiMessages), 2)
+        self.assertTrue(bridge.deleteAIConversation(first_id))
+        self.assertEqual(len(bridge.aiConversations), 1)
+
+        # 持久化：新 AppBridge 读取同一数据目录
+        from shenqing.bridge.app_bridge import AppBridge as Bridge2
+
+        other = Bridge2()
+        try:
+            self.assertGreaterEqual(len(other.aiConversations), 1)
+        finally:
+            other._shutdown_services()
+
+    def test_usage_records_and_reset(self) -> None:
+        bridge = self.bridge
+        result = {
+            "ok": True,
+            "text": "答",
+            "reasoning": "",
+            "error": "",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150, "cost": 0.123, "currency": "USD"},
+        }
+        with mock.patch.object(bridge._ai, "submit_ask", side_effect=self._fake_submit(result)):
+            bridge.askAI("花费")
+        self.assertEqual(bridge.aiTodayTokens, 150)
+        self.assertAlmostEqual(bridge.aiTodayCost, 0.123, places=6)
+        self.assertEqual(bridge.aiCurrency, "USD")
+        last = bridge.aiLastUsage
+        self.assertEqual(last["prompt_tokens"], 100)
+        self.assertEqual(last["completion_tokens"], 50)
+        self.assertEqual(last["model"], PROVIDERS["groq"]["default_model"])
+        bridge.resetAIUsage()
+        self.assertEqual(bridge.aiTodayTokens, 0)
+        self.assertAlmostEqual(bridge.aiTodayCost, 0.0, places=6)
+        self.assertEqual(bridge.aiLastUsage, {})
+
+    def test_capability_flags_and_toggles(self) -> None:
+        bridge = self.bridge
+        self.assertTrue(bridge.aiNeedsKey)
+        self.assertFalse(bridge.aiSupportsReasoning)  # groq
+        self.assertFalse(bridge.aiSupportsWebSearch)
+        self.assertTrue(bridge.aiReasoningEnabled)
+        self.assertFalse(bridge.aiWebSearchEnabled)
+        bridge.setAIWebSearchEnabled(True)
+        self.assertTrue(bridge.aiWebSearchEnabled)
+        with mock.patch.object(bridge, "fetchAIModels"):
+            bridge.setAIProvider("deepseek")
+        self.assertTrue(bridge.aiSupportsReasoning)
+        self.assertTrue(bridge.aiSupportsWebSearch)
+        with mock.patch.object(bridge, "fetchAIModels"):
+            bridge.setAIProvider("pollinations")
+        self.assertFalse(bridge.aiNeedsKey)
+        self.assertTrue(bridge.aiSupportsReasoning)
+        self.bridge.setAIEnabled(False)
+        self.assertTrue(bridge.aiConfigured)  # 免 Key 服务商恒为可配置
 
 
 if __name__ == "__main__":

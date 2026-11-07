@@ -1,5 +1,14 @@
 # 更新日志 / Changelog
 
+## v0.11.0 (2025-11-07)
+
+- AI 新增免配置服务商「免费直连」：无需 API Key，选好模型即可直接聊天
+- AI 对话历史持久化：会话列表、新建/切换/删除、消息与思考内容保存
+- 深度思考可选：DeepSeek thinking 开关与 reasoning_effort，回答里的思考过程可折叠查看
+- 联网搜索：DeepSeek tools/search、智谱 GLM web_search，按服务商能力显示开关
+- AI 用量与费用估算：今日 tokens、估算金额、最近一次回复用量；对话使用真实 token 统计
+- DeepSeek 模型更新为 deepseek-flash / deepseek-v4-pro（旧模型名已下线）
+
 ## v0.10.1 (2025-11-07)
 
 - AI 错误提示更友好：404 会提示检查 API Base（如 DeepSeek 应为 https://api.deepseek.com/v1），401/403 提示 Key 无效，429 限流提示，5xx 服务端错误

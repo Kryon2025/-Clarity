@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.10.1"
+APP_VERSION = "0.11.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,27 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.11.0",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "AI 新增免配置服务商「免费直连」：无需 API Key，选好模型即可直接聊天",
+            "AI 对话历史持久化：会话列表、新建/切换/删除、消息与思考内容保存",
+            "深度思考可选：DeepSeek thinking 开关与 reasoning_effort，回答里的思考过程可折叠查看",
+            "联网搜索：DeepSeek tools/search、智谱 GLM web_search，按服务商能力显示开关",
+            "AI 用量与费用估算：今日 tokens、估算金额、最近一次回复用量；对话使用真实 token 统计",
+            "DeepSeek 模型更新为 deepseek-flash / deepseek-v4-pro（旧模型名已下线）",
+        ],
+        "items_en": [
+            "New no-setup AI provider Free direct: no API key needed, pick a model and chat",
+            "Persistent AI chat history: conversation list, new/switch/delete, messages and reasoning saved",
+            "Optional deep thinking: DeepSeek thinking switch and reasoning_effort; reasoning shown in a collapsible block",
+            "Web search: DeepSeek tools/search and Zhipu GLM web_search, shown only when the provider supports it",
+            "AI usage and estimated cost: today tokens, estimated amount, last reply usage; real token counts per chat",
+            "DeepSeek models updated to deepseek-flash / deepseek-v4-pro (old model IDs retired)",
+        ],
+    },
     {
         "version": "0.10.1",
         "date": "2025-11-07",
