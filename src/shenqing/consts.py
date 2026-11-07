@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.11.1"
+APP_VERSION = "0.11.2"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,15 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.11.2",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "CI：单测失败时自动把日志发到提交注释，便于排查；锁定 PySide6 版本",
+        ],
+        "items_en": ["CI: automatically post unit-test failure logs as a commit comment; pin PySide6 version"],
+    },
     {
         "version": "0.11.1",
         "date": "2025-11-07",
