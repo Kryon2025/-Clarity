@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.12.1"
+APP_VERSION = "0.13.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,23 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.13.0",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "数据页改为 Patina 式横向分类：概览 / 应用 / 分类 / 热力图 / 会话，一次只显示一个分类",
+            "新增应用分类管理：按 exe 自动检测类别，可手动修改或恢复自动",
+            "新增 GitHub 风格 90 天热力图与 24 小时使用分布",
+            "还清（睡眠模式）入口移到清空间页顶部，设置里改为迁移说明",
+        ],
+        "items_en": [
+            "Stats page now uses Patina-style horizontal tabs: Overview / Apps / Categories / Heatmap / Sessions, one at a time",
+            "App category management: automatic detection by exe, with manual override and restore",
+            "GitHub-style 90-day heatmap and 24-hour usage distribution",
+            "Sleep mode (Huanqing) entry moved to the top of the Clarity Space page; Settings now shows a migration note",
+        ],
+    },
     {
         "version": "0.12.1",
         "date": "2025-11-07",

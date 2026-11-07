@@ -922,237 +922,31 @@ Item {
                 }
             }
 
-            // ---------- 还清（睡眠模式） ----------
+            // ---------- 睡眠模式（已移至清空间） ----------
             GlassCard {
                 width: parent.width
-                implicitHeight: sleepColumn.implicitHeight + 24
-                height: implicitHeight
+                height: 64
                 radius: 20
                 interactive: false
                 glassSource: page.glassSource
 
-                Column {
-                    id: sleepColumn
-                    x: 16
-                    y: 12
-                    width: parent.width - 32
-                    spacing: 10
-
-                    Row {
-                        width: parent.width
-                        spacing: 9
-
-                        Glyph {
-                            anchors.verticalCenter: parent.verticalCenter
-                            kind: "moon"
-                            size: 16
-                            color: AppTheme.accent
-                        }
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("还清（睡眠模式）")
-                            color: AppTheme.textPrimary
-                            font.pixelSize: AppTheme.fs(15)
-                            font.weight: Font.DemiBold
-                            font.family: AppTheme.fontFamily
-                        }
-                        Item { width: parent.width - 260; height: 1 }
-                        GlassSwitch {
-                            anchors.verticalCenter: parent.verticalCenter
-                            checked: (typeof App !== "undefined" && App.sleepRemindersEnabled !== undefined)
-                                     ? App.sleepRemindersEnabled : page.localSleepReminders
-                            onClicked: page.toggleSleepReminders()
-                        }
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 9
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "moon"
+                        size: 15
+                        color: AppTheme.textSecondary
                     }
-
                     Text {
-                        width: parent.width
-                        text: qsTr("到点自动进入深清锁定；开启右侧开关会提前提醒。")
-                        color: AppTheme.textTertiary
-                        font.pixelSize: AppTheme.fs(11)
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("睡眠模式已移至清空间页顶部「还清 · 睡眠模式」")
+                        color: AppTheme.textSecondary
+                        font.pixelSize: AppTheme.fs(12)
                         font.family: AppTheme.fontFamily
-                        wrapMode: Text.WordWrap
-                    }
-
-                    // 多段锁定时间
-                    Column {
-                        width: parent.width
-                        spacing: 6
-
-                        Repeater {
-                            model: page.sleepTimes
-                            delegate: Item {
-                                width: sleepColumn.width
-                                height: 32
-                                readonly property string timeText: modelData.time !== undefined
-                                                                   ? String(modelData.time)
-                                                                   : String(modelData)
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 10
-                                    color: AppTheme.glass ? "#12FFFFFF" : AppTheme.cardBgAlt
-                                }
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 12
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: qsTr("%1 锁定").arg(timeText)
-                                    color: AppTheme.textPrimary
-                                    font.pixelSize: AppTheme.fs(13)
-                                    font.family: AppTheme.fontFamily
-                                }
-                                Item {
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 24
-                                    height: 24
-                                    Glyph {
-                                        anchors.centerIn: parent
-                                        kind: "close"
-                                        size: 11
-                                        color: sleepRemoveArea.containsMouse ? AppTheme.danger : AppTheme.textTertiary
-                                    }
-                                    MouseArea {
-                                        id: sleepRemoveArea
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: page.removeSleepTime(modelData)
-                                    }
-                                }
-                            }
-                        }
-
-                        Row {
-                            spacing: 8
-                            TextInput {
-                                id: newSleepInput
-                                width: 88
-                                height: 32
-                                verticalAlignment: TextInput.AlignVCenter
-                                horizontalAlignment: TextInput.AlignHCenter
-                                text: page.newSleepTime
-                                color: AppTheme.textPrimary
-                                selectionColor: AppTheme.accentSoft
-                                selectedTextColor: "#FFFFFF"
-                                font.pixelSize: AppTheme.fs(13)
-                                font.family: AppTheme.fontFamily
-                                onTextChanged: page.newSleepTime = text
-                                Keys.onReturnPressed: page.addSleepTime(text)
-                                Rectangle {
-                                    anchors.fill: parent
-                                    z: -1
-                                    radius: 10
-                                    color: AppTheme.cardBgAlt
-                                    border.width: 1
-                                    border.color: newSleepInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
-                                }
-                            }
-                            GlassButton {
-                                text: qsTr("添加时间")
-                                tone: "ghost"
-                                fontSize: 12
-                                padH: 14
-                                minHeight: 32
-                                onClicked: page.addSleepTime(page.newSleepTime)
-                            }
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: qsTr("提醒：提前 1 小时 / 30 分钟 / 1 分钟")
-                            color: AppTheme.textTertiary
-                            font.pixelSize: AppTheme.fs(11)
-                            font.family: AppTheme.fontFamily
-                        }
-
-                        Row {
-                            width: parent.width
-                            spacing: 12
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: (typeof App !== "undefined" && App.unlockChanceLabel !== undefined)
-                                      ? String(App.unlockChanceLabel)
-                                      : qsTr("本月剩余解锁次数：%1").arg(2)
-                                color: AppTheme.textSecondary
-                                font.pixelSize: AppTheme.fs(12)
-                                font.family: AppTheme.fontFamily
-                            }
-
-                            Item {
-                                width: parent.width - 380
-                                height: 1
-                            }
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: qsTr("连续点击时钟 10 次解锁")
-                                color: AppTheme.textTertiary
-                                font.pixelSize: AppTheme.fs(11)
-                                font.family: AppTheme.fontFamily
-                            }
-
-                            Item {
-                                id: sleepClockButton
-                                width: 30
-                                height: 30
-                                anchors.verticalCenter: parent.verticalCenter
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 15
-                                    color: sleepClockArea.containsMouse ? AppTheme.accentSoft : AppTheme.cardBgAlt
-                                    border.width: 1
-                                    border.color: AppTheme.cardBorder
-                                }
-                                Glyph {
-                                    anchors.centerIn: parent
-                                    kind: "clock"
-                                    size: 15
-                                    color: AppTheme.textPrimary
-                                }
-                                MouseArea {
-                                    id: sleepClockArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: page.clickSleepClock()
-                                }
-                            }
-                        }
-
-                        // 连续点击进度
-                        Item {
-                            width: parent.width
-                            height: 14
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                height: 4
-                                radius: 2
-                                color: AppTheme.glass ? "#1AFFFFFF" : AppTheme.divider
-                            }
-                            Rectangle {
-                                width: parent.width * page.clockClickCount / 10
-                                height: 4
-                                radius: 2
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: AppTheme.accent
-                                Behavior on width { NumberAnimation { duration: 120 } }
-                            }
-                            Text {
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: -8
-                                text: page.clockClickCount + " / 10"
-                                color: AppTheme.textTertiary
-                                font.pixelSize: AppTheme.fs(10)
-                                font.family: AppTheme.fontFamily
-                            }
-                        }
                     }
                 }
             }

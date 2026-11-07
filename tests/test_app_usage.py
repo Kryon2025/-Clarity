@@ -152,6 +152,54 @@ class AppUsageTrackerTest(unittest.TestCase):
             reloaded.shutdown()
 
 
+    # ---------- v0.13 小时聚合 / 热力图 ----------
+    def test_hourly_aggregation(self) -> None:
+        self._sample(5.0, 12)  # 10 点
+        self.wall[0] = self.wall[0].replace(hour=11)
+        self.foreground = (5678, "code.exe")
+        self._sample(5.0, 12)  # 11 点
+        hourly = self.tracker.hourly("today")
+        self.assertEqual(len(hourly), 24)
+        by_hour = {item["hour"]: item["minutes"] for item in hourly}
+        self.assertGreater(by_hour[10], 0.5)
+        self.assertGreater(by_hour[11], 0.5)
+        self.assertEqual(by_hour[12], 0)
+        week = self.tracker.hourly("week")
+        self.assertEqual(len(week), 24)
+        self.assertGreater(sum(item["minutes"] for item in week), 1.0)
+
+    def test_heatmap_zero_fill(self) -> None:
+        self._sample(5.0, 12)
+        today = self.wall[0].date()
+        heatmap = self.tracker.heatmap(90, today=today)
+        self.assertEqual(len(heatmap), 90)
+        self.assertEqual(heatmap[-1]["date"], today.isoformat())
+        self.assertGreater(heatmap[-1]["minutes"], 0.5)
+        self.assertEqual(heatmap[0]["minutes"], 0)
+        self.assertGreaterEqual(heatmap[0]["date"], "2000-01-01")
+        # 天数夹取
+        self.assertLessEqual(len(self.tracker.heatmap(0)), 365)
+
+    def test_old_format_without_hours_is_compatible(self) -> None:
+        self.path.write_text(
+            json.dumps(
+                {"2026-11-07": {"chrome.exe": {"minutes": 12.0, "name": "Chrome"}}},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        tracker = self._make()
+        self.assertEqual(tracker.total_minutes("2026-11-07"), 12.0)
+        self.assertEqual(tracker.hourly("today", now=datetime(2026, 11, 7, 10, 0)), [
+            {"hour": hour, "minutes": 0.0} for hour in range(24)
+        ])
+        tracker.sample()
+        tracker.flush()
+        saved = json.loads(self.path.read_text(encoding="utf-8"))
+        self.assertIn("hours", saved)
+        self.assertIn("2026-11-07", saved)
+
+
 class AppUsageBridgeTest(unittest.TestCase):
     """bridge 暴露字段形状与日期/分类覆盖接口。"""
 
@@ -166,6 +214,12 @@ class AppUsageBridgeTest(unittest.TestCase):
             today: {
                 "chrome.exe": {"minutes": 12.5, "name": "Chrome"},
                 "code.exe": {"minutes": 3.0, "name": "VS Code"},
+            }
+        }
+        tracker._hours = {
+            today: {
+                "10": {"chrome.exe": 5.0},
+                "15": {"code.exe": 2.5},
             }
         }
         self.bridge._app_usage_date = today
@@ -204,6 +258,52 @@ class AppUsageBridgeTest(unittest.TestCase):
         self.assertTrue(bridge.setAppColor("chrome.exe", "#112233"))
         self.assertEqual(bridge._app_usage.color_for("chrome.exe"), "#112233")
         self.assertFalse(bridge.setAppCategory("chrome.exe", "unknown"))
+
+    # ---------- v0.13 热力图 / 小时分布 / 分类 ----------
+    def test_heatmap_and_hourly(self) -> None:
+        bridge = self.bridge
+        heatmap = bridge.appUsageHeatmap
+        self.assertEqual(len(heatmap), 90)
+        self.assertTrue(all("date" in item and "minutes" in item for item in heatmap))
+        bridge.setAppUsageHeatmapDays(30)
+        self.assertEqual(bridge.appUsageHeatmapDays, 30)
+        self.assertEqual(len(bridge.appUsageHeatmap), 30)
+        bridge.setAppUsageHeatmapDays(180)
+        self.assertEqual(len(bridge.appUsageHeatmap), 180)
+        bridge.setAppUsageHeatmapDays(45)  # 非法值忽略
+        self.assertEqual(bridge.appUsageHeatmapDays, 180)
+        self.assertEqual(bridge.appUsageHourlyRange, "today")
+        hourly = bridge.appUsageHourly
+        self.assertEqual(len(hourly), 24)
+        hour = max(item["hour"] for item in hourly)
+        self.assertEqual(hour, 23)
+        bridge.setAppUsageHourlyRange("week")
+        self.assertEqual(bridge.appUsageHourlyRange, "week")
+        self.assertEqual(len(bridge.appUsageHourly), 24)
+        bridge.setAppUsageHourlyRange("month")  # 非法忽略
+        self.assertEqual(bridge.appUsageHourlyRange, "week")
+
+    def test_app_usage_apps_and_category_reset(self) -> None:
+        bridge = self.bridge
+        apps = bridge.appUsageApps
+        self.assertTrue(apps)
+        chrome = next(item for item in apps if item["exe"] == "chrome.exe")
+        self.assertEqual(chrome["detected_category"], "browser")
+        self.assertEqual(chrome["category"], "browser")
+        self.assertFalse(chrome["is_custom"])
+        self.assertTrue(bridge.setAppCategory("chrome.exe", "dev"))
+        chrome = next(item for item in bridge.appUsageApps if item["exe"] == "chrome.exe")
+        self.assertEqual(chrome["category"], "dev")
+        self.assertEqual(chrome["detected_category"], "browser")
+        self.assertTrue(chrome["is_custom"])
+        self.assertTrue(bridge.resetAppCategory("chrome.exe"))
+        chrome = next(item for item in bridge.appUsageApps if item["exe"] == "chrome.exe")
+        self.assertEqual(chrome["category"], "browser")
+        self.assertFalse(chrome["is_custom"])
+        self.assertFalse(bridge.resetAppCategory("chrome.exe"))
+        options = bridge.appCategoryOptions
+        self.assertEqual(len(options), 7)
+        self.assertIn({"value": "dev", "label": "开发"}, options)
 
 
 if __name__ == "__main__":

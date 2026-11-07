@@ -383,6 +383,49 @@ Item {
                         font.family: AppTheme.fontFamily
                     }
                 }
+
+                // v0.13 睡眠模式入口（从设置页移到清空间）
+                Item {
+                    id: sleepEntry
+                    objectName: "SleepEntry"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: sleepEntryLabel.implicitWidth + 42
+                    height: 34
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 17
+                        color: sleepEntryArea.containsMouse ? AppTheme.accentSoft : AppTheme.cardBg
+                        border.width: 1
+                        border.color: sleepEntryArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
+                    }
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 7
+                        Glyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            kind: "moon"
+                            size: 14
+                            color: AppTheme.accent
+                        }
+                        Text {
+                            id: sleepEntryLabel
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("还清 · 睡眠模式")
+                            color: AppTheme.textSecondary
+                            font.pixelSize: AppTheme.fs(12)
+                            font.family: AppTheme.fontFamily
+                        }
+                    }
+                    MouseArea {
+                        id: sleepEntryArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: sleepSheet.open()
+                    }
+                }
             }
 
     // ---------- 浏览器式标签页：浅清 / 覆清 / 深清（固定顶部） ----------
@@ -1238,4 +1281,13 @@ Item {
             }
         }
     }
+
+    // ---------- 睡眠模式面板（v0.13，与设置页共用组件） ----------
+    SleepSheet {
+        id: sleepSheet
+        anchors.fill: parent
+        glassSource: page.glassSource
+        animationsEnabled: page.animationsEnabled
+    }
+
 }

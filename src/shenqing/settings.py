@@ -32,6 +32,7 @@ DEFAULTS: dict[str, Any] = {
     "ui_font_family": "",            # 界面字体（空 = 内置默认字体）
     "ui_font_scale": 1.0,            # 界面字号缩放 0.8-1.4（步进 0.05）
     "nav_mode": "expanded",          # 导航模式：auto / expanded / icons / custom
+    "app_usage_heatmap_days": 90,    # 应用热力图天数：30 / 90 / 180
     "volume_panel": 50,     # dock 设置面板上次的系统音量（0-100）
     "onboarding_done": False,  # 首次使用引导是否完成
     "countdown_date": "",      # 倒数日目标日期 YYYY-MM-DD（空=不显示）

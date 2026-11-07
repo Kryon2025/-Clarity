@@ -204,6 +204,7 @@ class AppBridge(QObject):
             now_provider=timesync.now, parent=self
         )
         self._app_usage_date = ""
+        self._app_usage_hourly_range = "today"
         self._volume = -1
         self._sleep_lock_active = False
         self._clock_clicks: deque[float] = deque()
@@ -1550,6 +1551,67 @@ class AppBridge(QObject):
     def _on_app_usage_changed(self) -> None:
         self.statsChanged.emit()
         self.appUsageChanged.emit()
+
+    # ---------- v0.13 热力图 / 小时分布 / 应用分类 ----------
+    @Property(list, notify=appUsageChanged)
+    def appUsageHeatmap(self) -> list[dict]:
+        """最近 N 天每日总分钟（无记录补 0），画日历热力图。"""
+        return self._app_usage.heatmap(self.appUsageHeatmapDays)
+
+    @Property(list, notify=appUsageChanged)
+    def appUsageHourly(self) -> list[dict]:
+        return self._app_usage.hourly(self._app_usage_hourly_range)
+
+    @Property(str, notify=appUsageChanged)
+    def appUsageHourlyRange(self) -> str:
+        return self._app_usage_hourly_range
+
+    @Slot(str)
+    def setAppUsageHourlyRange(self, value: str) -> None:
+        text = str(value or "").strip().lower()
+        if text not in ("today", "week"):
+            return
+        self._app_usage_hourly_range = text
+        self.appUsageChanged.emit()
+
+    @Property(int, notify=appUsageChanged)
+    def appUsageHeatmapDays(self) -> int:
+        value = self._settings.get("app_usage_heatmap_days", 90)
+        try:
+            days = int(value)
+        except (TypeError, ValueError):
+            days = 90
+        return days if days in (30, 90, 180) else 90
+
+    @Slot(int)
+    def setAppUsageHeatmapDays(self, days: int) -> None:
+        try:
+            value = int(days)
+        except (TypeError, ValueError):
+            return
+        if value not in (30, 90, 180):
+            return
+        self._settings.set("app_usage_heatmap_days", value)
+        self.appUsageChanged.emit()
+
+    @Property(list, notify=appUsageChanged)
+    def appUsageApps(self) -> list[dict]:
+        return self._app_usage.all_apps()
+
+    @Slot(str, result=bool)
+    def resetAppCategory(self, exe: str) -> bool:
+        ok = self._app_usage.reset_category(exe)
+        if ok:
+            self.statsChanged.emit()
+            self.appUsageChanged.emit()
+        return ok
+
+    @Property(list, constant=True)
+    def appCategoryOptions(self) -> list[dict]:
+        return [
+            {"value": item["value"], "label": item["label"]}
+            for item in app_usage.CATEGORIES
+        ]
 
     # ================= 服务退出清理 =================
     def _shutdown_services(self) -> None:

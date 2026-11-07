@@ -256,6 +256,8 @@ class AppUsageTracker(QObject):
         self._idle = idle_provider or idle_milliseconds
         self._locked = locked_provider or session_locked
         self._days: dict[str, dict[str, dict]] = {}
+        #: day -> "HH" -> exe -> minutes（v0.13 热力图小时聚合）
+        self._hours: dict[str, dict[str, dict[str, float]]] = {}
         self._category_overrides: dict[str, str] = {}
         self._color_overrides: dict[str, str] = {}
         self._own_names = own_process_names()
@@ -297,8 +299,12 @@ class AppUsageTracker(QObject):
         except (OSError, json.JSONDecodeError, ValueError):
             data = None
         self._days = {}
+        self._hours = {}
         if isinstance(data, dict):
-            for day, items in data.items():
+            raw_days = data.get("days") if isinstance(data.get("days"), dict) else data
+            for day, items in raw_days.items():
+                if str(day) in ("hours", "days", "schemaVersion", "updated"):
+                    continue
                 if not isinstance(items, dict):
                     continue
                 bucket: dict[str, dict] = {}
@@ -314,6 +320,31 @@ class AppUsageTracker(QObject):
                         "name": str(entry.get("name") or pretty_name(str(exe).lower())),
                     }
                 self._days[str(day)] = bucket
+            hours_data = data.get("hours")
+            if isinstance(hours_data, dict):
+                for day, hour_buckets in hours_data.items():
+                    if not isinstance(hour_buckets, dict):
+                        continue
+                    day_bucket: dict[str, dict[str, float]] = {}
+                    for hour, exe_items in hour_buckets.items():
+                        try:
+                            hour_key = f"{int(hour):02d}"
+                        except (TypeError, ValueError):
+                            continue
+                        if not (0 <= int(hour_key) <= 23) or not isinstance(exe_items, dict):
+                            continue
+                        exe_bucket: dict[str, float] = {}
+                        for exe, minutes in exe_items.items():
+                            try:
+                                value = max(0.0, float(minutes))
+                            except (TypeError, ValueError):
+                                continue
+                            if value > 0:
+                                exe_bucket[str(exe).lower()] = round(value, 2)
+                        if exe_bucket:
+                            day_bucket[hour_key] = exe_bucket
+                    if day_bucket:
+                        self._hours[str(day)] = day_bucket
         try:
             overrides = json.loads(self._overrides_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError, ValueError):
@@ -339,18 +370,31 @@ class AppUsageTracker(QObject):
     def flush(self) -> None:
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            trimmed = {
-                day: self._days[day]
-                for day in sorted(self._days.keys())[-KEEP_DAYS:]
+            kept_days = sorted(self._days.keys())[-KEEP_DAYS:]
+            self._days = {day: self._days[day] for day in kept_days}
+            self._hours = {
+                day: self._hours[day]
+                for day in sorted(self._hours.keys())[-KEEP_DAYS:]
             }
-            self._days = trimmed
-            payload = {
+            payload: dict = {
                 day: {
                     exe: {"minutes": round(float(entry.get("minutes", 0)), 2),
                           "name": str(entry.get("name") or pretty_name(exe))}
                     for exe, entry in items.items()
                 }
                 for day, items in self._days.items()
+            }
+            # v0.13：小时聚合与按天数据共存；旧版本读不到 hours 会忽略
+            payload["hours"] = {
+                day: {
+                    hour: {
+                        exe: round(float(minutes), 2)
+                        for exe, minutes in exe_items.items()
+                        if float(minutes) > 0
+                    }
+                    for hour, exe_items in hour_buckets.items()
+                }
+                for day, hour_buckets in self._hours.items()
             }
             self._path.write_text(
                 json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -382,12 +426,16 @@ class AppUsageTracker(QObject):
                 self._today = day
             foreground = None if self._locked() else self._foreground()
             idle = self._idle()
-            self._accumulate(foreground, idle, now_mono)
+            self._accumulate(foreground, idle, now_mono, wall)
         except Exception as exc:  # noqa: BLE001 - 统计失败不能拖垮主程序
             logger.warning("应用使用采样失败：%s", exc)
 
     def _accumulate(
-        self, foreground: tuple[int, str] | None, idle_ms: int, now_mono: float
+        self,
+        foreground: tuple[int, str] | None,
+        idle_ms: int,
+        now_mono: float,
+        wall: datetime | None = None,
     ) -> None:
         delta = now_mono - self._last_sample_at
         self._last_sample_at = now_mono
@@ -403,8 +451,14 @@ class AppUsageTracker(QObject):
             return
         bucket = self._days.setdefault(self._today, {})
         entry = bucket.setdefault(exe, {"minutes": 0.0, "name": pretty_name(exe)})
-        entry["minutes"] = round(float(entry.get("minutes", 0.0)) + delta / 60.0, 2)
+        minutes = delta / 60.0
+        entry["minutes"] = round(float(entry.get("minutes", 0.0)) + minutes, 2)
         entry["name"] = pretty_name(exe)
+        # v0.13：小时聚合（热力图）
+        now = wall or self._now()
+        hour_key = f"{now.hour:02d}"
+        hour_bucket = self._hours.setdefault(self._today, {}).setdefault(hour_key, {})
+        hour_bucket[exe] = round(float(hour_bucket.get(exe, 0.0)) + minutes, 2)
         self._dirty = True
 
     # ---------- 分类 / 颜色 ----------
@@ -526,6 +580,93 @@ class AppUsageTracker(QObject):
         ]
         result.sort(key=lambda item: item["minutes"], reverse=True)
         return result
+
+
+    # ---------- v0.13 热力图 / 小时分布 / 全部应用 ----------
+    def heatmap(self, days: int = 90, today: date | None = None) -> list[dict]:
+        """最近 N 天每日总分钟（含无记录日期补 0），便于日历热力图。"""
+        current = today or self._now().date()
+        try:
+            count = max(1, min(365, int(days)))
+        except (TypeError, ValueError):
+            count = 90
+        result: list[dict] = []
+        for offset in range(count - 1, -1, -1):
+            day = (current - timedelta(days=offset)).isoformat()
+            minutes = sum(
+                float(entry.get("minutes", 0)) for entry in self._bucket(day).values()
+            )
+            result.append({"date": day, "minutes": round(minutes, 1)})
+        return result
+
+    def hourly(self, range_: str = "today", now: datetime | None = None) -> list[dict]:
+        """24 小时桶：today=今天，week=最近 7 天汇总。"""
+        current = now or self._now()
+        if str(range_) == "week":
+            days = [
+                (current.date() - timedelta(days=offset)).isoformat() for offset in range(7)
+            ]
+        else:
+            days = [current.date().isoformat()]
+        totals = {hour: 0.0 for hour in range(24)}
+        for day in days:
+            for hour_key, exe_items in self._hours.get(day, {}).items():
+                try:
+                    hour = int(hour_key)
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= hour <= 23:
+                    totals[hour] += sum(float(value) for value in exe_items.values())
+        return [
+            {"hour": hour, "minutes": round(totals[hour], 1)} for hour in range(24)
+        ]
+
+    def detected_category(self, exe: str) -> str:
+        """内置规则检测出的分类（不受用户覆盖影响）。"""
+        return BUILTIN_CATEGORY.get(str(exe or "").lower(), DEFAULT_CATEGORY)
+
+    def all_apps(self, limit: int = 200) -> list[dict]:
+        """所有曾出现的 exe（全时段汇总），供数据页应用分类列表。"""
+        totals: dict[str, dict] = {}
+        for items in self._days.values():
+            for exe, entry in items.items():
+                minutes = float(entry.get("minutes", 0))
+                if minutes <= 0:
+                    continue
+                target = totals.setdefault(
+                    exe,
+                    {
+                        "minutes": 0.0,
+                        "name": str(entry.get("name") or pretty_name(exe)),
+                    },
+                )
+                target["minutes"] = round(target["minutes"] + minutes, 2)
+        result = [
+            {
+                "exe": exe,
+                "name": str(entry["name"]),
+                "minutes": round(float(entry["minutes"]), 1),
+                "color": self.color_for(exe),
+                "category": self.category_for(exe),
+                "detected_category": self.detected_category(exe),
+                "is_custom": exe in self._category_overrides or exe in self._color_overrides,
+            }
+            for exe, entry in totals.items()
+            if float(entry["minutes"]) > 0
+        ]
+        result.sort(key=lambda item: item["minutes"], reverse=True)
+        return result[: max(0, int(limit))]
+
+    def reset_category(self, exe: str) -> bool:
+        """移除用户自定义分类，恢复内置检测值。"""
+        value = str(exe or "").strip().lower()
+        if value not in self._category_overrides:
+            return False
+        del self._category_overrides[value]
+        self._dirty = True
+        self.flush()
+        self.changed.emit()
+        return True
 
 
 def is_hex_color(value: str) -> bool:
