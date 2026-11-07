@@ -164,6 +164,9 @@ class AIServiceTest(unittest.TestCase):
         self.assertEqual(ai_module.migrate_legacy_model("groq", "deepseek-chat"), "deepseek-chat")
 
     def test_bridge_migrates_legacy_model_on_start(self) -> None:
+        # 显式指向临时数据目录：CI 上其他测试可能已把 SHENQING_DATA_DIR 清掉
+        old_dir = os.environ.get("SHENQING_DATA_DIR")
+        os.environ["SHENQING_DATA_DIR"] = self._tmp.name
         path = Path(self._tmp.name) / "settings.json"
         path.write_text(
             json.dumps(
@@ -183,6 +186,10 @@ class AIServiceTest(unittest.TestCase):
             self.assertEqual(other._settings.get("ai_model"), "deepseek-flash")
         finally:
             other._shutdown_services()
+            if old_dir is None:
+                os.environ.pop("SHENQING_DATA_DIR", None)
+            else:
+                os.environ["SHENQING_DATA_DIR"] = old_dir
 
     def test_fetch_models_parses_and_dedupes(self) -> None:
         payload = {"data": [{"id": "model-a"}, {"id": "model-b"}, {"id": "model-a"}]}
