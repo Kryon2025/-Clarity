@@ -26,8 +26,8 @@
     <message>
         <location filename="../qml/pages/AIPage.qml" line="61"/>
         <location filename="../qml/pages/AIPage.qml" line="83"/>
-        <location filename="../qml/pages/AIPage.qml" line="449"/>
-        <location filename="../qml/pages/AIPage.qml" line="920"/>
+        <location filename="../qml/pages/AIPage.qml" line="450"/>
+        <location filename="../qml/pages/AIPage.qml" line="921"/>
         <source>免配置</source>
         <translation>No setup needed</translation>
     </message>
@@ -57,89 +57,89 @@
         <translation>Last reply %1 tokens · %2%3 (estimated)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="304"/>
+        <location filename="../qml/pages/AIPage.qml" line="305"/>
         <source>对话、历史与用量都在这里</source>
         <translation>Chat, history and usage all live here</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="319"/>
+        <location filename="../qml/pages/AIPage.qml" line="320"/>
         <source>今日 %1 tokens · %2%3（估算）</source>
         <translation>Today %1 tokens · %2%3 (estimated)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="363"/>
+        <location filename="../qml/pages/AIPage.qml" line="364"/>
         <source>新会话</source>
         <translation>New chat</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="385"/>
+        <location filename="../qml/pages/AIPage.qml" line="386"/>
         <source>还没有会话，点右侧「新对话」开始</source>
         <translation>No conversations yet — click New chat on the right to start</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="400"/>
+        <location filename="../qml/pages/AIPage.qml" line="401"/>
         <source>＋ 新对话</source>
         <translation>+ New chat</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="457"/>
-        <location filename="../qml/pages/AIPage.qml" line="467"/>
+        <location filename="../qml/pages/AIPage.qml" line="458"/>
+        <location filename="../qml/pages/AIPage.qml" line="468"/>
         <source>思考</source>
         <translation>Thinking</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="457"/>
-        <location filename="../qml/pages/AIPage.qml" line="474"/>
+        <location filename="../qml/pages/AIPage.qml" line="458"/>
+        <location filename="../qml/pages/AIPage.qml" line="475"/>
         <source>联网</source>
         <translation>Web search</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="542"/>
+        <location filename="../qml/pages/AIPage.qml" line="543"/>
         <source>思考过程</source>
         <translation>Reasoning</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="579"/>
+        <location filename="../qml/pages/AIPage.qml" line="580"/>
         <source>%1 tokens</source>
         <translation>%1 tokens</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="615"/>
+        <location filename="../qml/pages/AIPage.qml" line="616"/>
         <source>空会话：问问专注方法，或让它帮你整理今天的任务。</source>
         <translation>Empty chat: ask about focus techniques, or have it organize today&apos;s tasks.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="616"/>
+        <location filename="../qml/pages/AIPage.qml" line="617"/>
         <source>还没有配置 AI。点右上角齿轮填写服务商与 Key，或选择「免费直连（免配置）」。</source>
         <translation>AI is not configured yet. Click the gear at the top right to set a provider and key, or choose Free direct (no setup).</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="657"/>
+        <location filename="../qml/pages/AIPage.qml" line="658"/>
         <source>请先配置 AI</source>
         <translation>Configure AI first</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="707"/>
+        <location filename="../qml/pages/AIPage.qml" line="708"/>
         <source>免配置服务商：无需 API Key，选好模型即可直接对话。</source>
         <translation>No-setup provider: no API key required; pick a model and chat directly.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="708"/>
+        <location filename="../qml/pages/AIPage.qml" line="709"/>
         <source>Key 只保存在本机；模型列表可自动获取。</source>
         <translation>Key stored locally; the model list can be fetched automatically.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="839"/>
+        <location filename="../qml/pages/AIPage.qml" line="840"/>
         <source>测试中…</source>
         <translation>Testing…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="859"/>
+        <location filename="../qml/pages/AIPage.qml" line="860"/>
         <source>用量统计：今日 %1 tokens · %2%3（估算）</source>
         <translation>Usage: today %1 tokens · %2%3 (estimated)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="869"/>
+        <location filename="../qml/pages/AIPage.qml" line="870"/>
         <source>重置</source>
         <translation>Reset</translation>
     </message>
@@ -148,7 +148,7 @@
         <translation type="vanished">Connected</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="845"/>
+        <location filename="../qml/pages/AIPage.qml" line="846"/>
         <source>连接失败</source>
         <translation>Connection failed</translation>
     </message>
@@ -171,7 +171,7 @@
         <translation>Missing test API (App.testAIConnection)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="303"/>
+        <location filename="../qml/pages/AIPage.qml" line="304"/>
         <source>AI</source>
         <translation>AI</translation>
     </message>
@@ -180,7 +180,7 @@
         <translation type="vanished">Configure a provider and model, then chat on the right</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="698"/>
+        <location filename="../qml/pages/AIPage.qml" line="699"/>
         <source>AI 设置</source>
         <translation>AI settings</translation>
     </message>
@@ -189,47 +189,47 @@
         <translation type="vanished">The key is stored locally; the model list can be fetched automatically or typed manually.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="717"/>
+        <location filename="../qml/pages/AIPage.qml" line="718"/>
         <source>服务商</source>
         <translation>Provider</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="734"/>
+        <location filename="../qml/pages/AIPage.qml" line="735"/>
         <source>模型</source>
         <translation>Model</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="760"/>
+        <location filename="../qml/pages/AIPage.qml" line="761"/>
         <source>获取中</source>
         <translation>Fetching</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="760"/>
+        <location filename="../qml/pages/AIPage.qml" line="761"/>
         <source>刷新</source>
         <translation>Refresh</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="777"/>
+        <location filename="../qml/pages/AIPage.qml" line="778"/>
         <source>API Base</source>
         <translation>API Base</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="801"/>
+        <location filename="../qml/pages/AIPage.qml" line="802"/>
         <source>API Key</source>
         <translation>API Key</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="823"/>
+        <location filename="../qml/pages/AIPage.qml" line="824"/>
         <source>已保存，留空不修改</source>
         <translation>Saved; leave blank to keep</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="823"/>
+        <location filename="../qml/pages/AIPage.qml" line="824"/>
         <source>输入 API Key</source>
         <translation>Enter API key</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="839"/>
+        <location filename="../qml/pages/AIPage.qml" line="840"/>
         <source>测试连接</source>
         <translation>Test connection</translation>
     </message>
@@ -252,12 +252,12 @@
 Fill in the provider and API key on the left, then send a message.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="588"/>
+        <location filename="../qml/pages/AIPage.qml" line="589"/>
         <source>思考中…</source>
         <translation>Thinking…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="606"/>
+        <location filename="../qml/pages/AIPage.qml" line="607"/>
         <source>AI 请求失败</source>
         <translation>AI request failed</translation>
     </message>
@@ -266,7 +266,7 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Ask ShenQing anything: focus methods, thinking things through, or just chat.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="657"/>
+        <location filename="../qml/pages/AIPage.qml" line="658"/>
         <source>问点什么…（Enter 发送）</source>
         <translation>Ask something… (Enter to send)</translation>
     </message>
@@ -275,7 +275,7 @@ Fill in the provider and API key on the left, then send a message.</translation>
         <translation type="vanished">Configure AI on the left first</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="668"/>
+        <location filename="../qml/pages/AIPage.qml" line="669"/>
         <source>发送</source>
         <translation>Send</translation>
     </message>

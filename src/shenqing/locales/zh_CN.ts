@@ -26,8 +26,8 @@
     <message>
         <location filename="../qml/pages/AIPage.qml" line="61"/>
         <location filename="../qml/pages/AIPage.qml" line="83"/>
-        <location filename="../qml/pages/AIPage.qml" line="449"/>
-        <location filename="../qml/pages/AIPage.qml" line="920"/>
+        <location filename="../qml/pages/AIPage.qml" line="450"/>
+        <location filename="../qml/pages/AIPage.qml" line="921"/>
         <source>免配置</source>
         <translation>免配置</translation>
     </message>
@@ -57,89 +57,89 @@
         <translation>上次回复 %1 tokens · %2%3（估算）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="304"/>
+        <location filename="../qml/pages/AIPage.qml" line="305"/>
         <source>对话、历史与用量都在这里</source>
         <translation>对话、历史与用量都在这里</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="319"/>
+        <location filename="../qml/pages/AIPage.qml" line="320"/>
         <source>今日 %1 tokens · %2%3（估算）</source>
         <translation>今日 %1 tokens · %2%3（估算）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="363"/>
+        <location filename="../qml/pages/AIPage.qml" line="364"/>
         <source>新会话</source>
         <translation>新会话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="385"/>
+        <location filename="../qml/pages/AIPage.qml" line="386"/>
         <source>还没有会话，点右侧「新对话」开始</source>
         <translation>还没有会话，点右侧「新对话」开始</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="400"/>
+        <location filename="../qml/pages/AIPage.qml" line="401"/>
         <source>＋ 新对话</source>
         <translation>＋ 新对话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="457"/>
-        <location filename="../qml/pages/AIPage.qml" line="467"/>
+        <location filename="../qml/pages/AIPage.qml" line="458"/>
+        <location filename="../qml/pages/AIPage.qml" line="468"/>
         <source>思考</source>
         <translation>思考</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="457"/>
-        <location filename="../qml/pages/AIPage.qml" line="474"/>
+        <location filename="../qml/pages/AIPage.qml" line="458"/>
+        <location filename="../qml/pages/AIPage.qml" line="475"/>
         <source>联网</source>
         <translation>联网</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="542"/>
+        <location filename="../qml/pages/AIPage.qml" line="543"/>
         <source>思考过程</source>
         <translation>思考过程</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="579"/>
+        <location filename="../qml/pages/AIPage.qml" line="580"/>
         <source>%1 tokens</source>
         <translation>%1 tokens</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="615"/>
+        <location filename="../qml/pages/AIPage.qml" line="616"/>
         <source>空会话：问问专注方法，或让它帮你整理今天的任务。</source>
         <translation>空会话：问问专注方法，或让它帮你整理今天的任务。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="616"/>
+        <location filename="../qml/pages/AIPage.qml" line="617"/>
         <source>还没有配置 AI。点右上角齿轮填写服务商与 Key，或选择「免费直连（免配置）」。</source>
         <translation>还没有配置 AI。点右上角齿轮填写服务商与 Key，或选择「免费直连（免配置）」。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="657"/>
+        <location filename="../qml/pages/AIPage.qml" line="658"/>
         <source>请先配置 AI</source>
         <translation>请先配置 AI</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="707"/>
+        <location filename="../qml/pages/AIPage.qml" line="708"/>
         <source>免配置服务商：无需 API Key，选好模型即可直接对话。</source>
         <translation>免配置服务商：无需 API Key，选好模型即可直接对话。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="708"/>
+        <location filename="../qml/pages/AIPage.qml" line="709"/>
         <source>Key 只保存在本机；模型列表可自动获取。</source>
         <translation>Key 只保存在本机；模型列表可自动获取。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="839"/>
+        <location filename="../qml/pages/AIPage.qml" line="840"/>
         <source>测试中…</source>
         <translation>测试中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="859"/>
+        <location filename="../qml/pages/AIPage.qml" line="860"/>
         <source>用量统计：今日 %1 tokens · %2%3（估算）</source>
         <translation>用量统计：今日 %1 tokens · %2%3（估算）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="869"/>
+        <location filename="../qml/pages/AIPage.qml" line="870"/>
         <source>重置</source>
         <translation>重置</translation>
     </message>
@@ -148,7 +148,7 @@
         <translation type="vanished">连接成功</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="845"/>
+        <location filename="../qml/pages/AIPage.qml" line="846"/>
         <source>连接失败</source>
         <translation>连接失败</translation>
     </message>
@@ -171,7 +171,7 @@
         <translation>缺少测试接口（App.testAIConnection）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="303"/>
+        <location filename="../qml/pages/AIPage.qml" line="304"/>
         <source>AI</source>
         <translation>AI</translation>
     </message>
@@ -180,7 +180,7 @@
         <translation type="vanished">配置服务商与模型，然后在右侧直接对话</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="698"/>
+        <location filename="../qml/pages/AIPage.qml" line="699"/>
         <source>AI 设置</source>
         <translation>AI 设置</translation>
     </message>
@@ -189,47 +189,47 @@
         <translation type="vanished">Key 只保存在本机；模型列表可自动获取，也可手动输入。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="717"/>
+        <location filename="../qml/pages/AIPage.qml" line="718"/>
         <source>服务商</source>
         <translation>服务商</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="734"/>
+        <location filename="../qml/pages/AIPage.qml" line="735"/>
         <source>模型</source>
         <translation>模型</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="760"/>
+        <location filename="../qml/pages/AIPage.qml" line="761"/>
         <source>获取中</source>
         <translation>获取中</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="760"/>
+        <location filename="../qml/pages/AIPage.qml" line="761"/>
         <source>刷新</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="777"/>
+        <location filename="../qml/pages/AIPage.qml" line="778"/>
         <source>API Base</source>
         <translation>API Base</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="801"/>
+        <location filename="../qml/pages/AIPage.qml" line="802"/>
         <source>API Key</source>
         <translation>API Key</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="823"/>
+        <location filename="../qml/pages/AIPage.qml" line="824"/>
         <source>已保存，留空不修改</source>
         <translation>已保存，留空不修改</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="823"/>
+        <location filename="../qml/pages/AIPage.qml" line="824"/>
         <source>输入 API Key</source>
         <translation>输入 API Key</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="839"/>
+        <location filename="../qml/pages/AIPage.qml" line="840"/>
         <source>测试连接</source>
         <translation>测试连接</translation>
     </message>
@@ -252,12 +252,12 @@
 请在左侧填写服务商与 API Key，然后发送消息。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="588"/>
+        <location filename="../qml/pages/AIPage.qml" line="589"/>
         <source>思考中…</source>
         <translation>思考中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="606"/>
+        <location filename="../qml/pages/AIPage.qml" line="607"/>
         <source>AI 请求失败</source>
         <translation>AI 请求失败</translation>
     </message>
@@ -266,7 +266,7 @@
         <translation type="vanished">把问题交给深清：可以问专注方法、帮你整理思路，或随便聊聊。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="657"/>
+        <location filename="../qml/pages/AIPage.qml" line="658"/>
         <source>问点什么…（Enter 发送）</source>
         <translation>问点什么…（Enter 发送）</translation>
     </message>
@@ -275,7 +275,7 @@
         <translation type="vanished">请先在左侧配置 AI</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AIPage.qml" line="668"/>
+        <location filename="../qml/pages/AIPage.qml" line="669"/>
         <source>发送</source>
         <translation>发送</translation>
     </message>
