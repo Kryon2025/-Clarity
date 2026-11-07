@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -44,6 +45,29 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "base": "https://api.siliconflow.cn/v1",
         "models": ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-14B-Instruct"],
         "default_model": "Qwen/Qwen2.5-7B-Instruct",
+    },
+    "deepseek": {
+        "value": "deepseek",
+        "label": "DeepSeek",
+        "base": "https://api.deepseek.com/v1",
+        "models": ["deepseek-chat", "deepseek-reasoner"],
+        "default_model": "deepseek-chat",
+    },
+    "mimo": {
+        "value": "mimo",
+        "label": "小米 MiMo",
+        "base": "https://api.xiaomimimo.com/v1",
+        "models": ["mimo-v2.6-flash", "mimo-v2.6-pro"],
+        "default_model": "mimo-v2.6-flash",
+        #: 除 Bearer 外还支持 api-key 头（Bearer 失败时回退一次）
+        "api_key_header": True,
+    },
+    "openai": {
+        "value": "openai",
+        "label": "ChatGPT",
+        "base": "https://api.openai.com/v1",
+        "models": ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"],
+        "default_model": "gpt-4o-mini",
     },
     "custom": {
         "value": "custom",
@@ -95,6 +119,105 @@ def local_search(query: str, items: list[dict], limit: int = 3) -> list[dict]:
     return [item for _score, item in scored[: max(1, int(limit))]]
 
 
+MODELS_CACHE_TTL = 24 * 60 * 60
+MODELS_TIMEOUT = 15.0
+
+
+def _auth_headers(key: str, scheme: str = "bearer") -> dict[str, str]:
+    headers = {"User-Agent": "ShenQing-AI"}
+    if scheme == "api-key":
+        headers["api-key"] = str(key or "")
+    else:
+        headers["Authorization"] = f"Bearer {key}"
+    return headers
+
+
+def _get_json(url: str, key: str, timeout: float, scheme: str) -> tuple[dict | None, str]:
+    """GET JSON；错误信息已脱敏，不抛异常。"""
+    request = urllib.request.Request(url, method="GET", headers=_auth_headers(key, scheme))
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+            raw = response.read().decode("utf-8", errors="replace")
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return None, "返回格式不正确"
+        return data, ""
+    except urllib.error.HTTPError as exc:
+        return None, f"AUTH {exc.code}" if exc.code in (401, 403) else f"HTTP {exc.code}"
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+        return None, f"网络错误：{exc}"
+
+
+def fetch_models(base: str, key: str, provider: str = "") -> list[str]:
+    """GET {base}/models，解析 data[].id；失败返回 []（不抛异常）。
+
+    MiMo 先 Bearer，失败后再用 api-key 头重试一次。
+    """
+    base_text = str(base or "").rstrip("/")
+    key_text = str(key or "")
+    if not base_text or not key_text:
+        return []
+    url = f"{base_text}/models"
+    schemes = ["bearer"]
+    if str(provider or "") == "mimo":
+        # MiMo 除 Bearer 外还支持 api-key 头：Bearer 失败后再试一次
+        schemes.append("api-key")
+    last_error = ""
+    for scheme in schemes:
+        data, error = _get_json(url, key_text, MODELS_TIMEOUT, scheme)
+        if data is None:
+            last_error = error
+            continue
+        items = data.get("data")
+        models: list[str] = []
+        if isinstance(items, list):
+            for item in items:
+                model_id = ""
+                if isinstance(item, dict):
+                    model_id = str(item.get("id") or "").strip()
+                elif isinstance(item, str):
+                    model_id = item.strip()
+                if model_id and model_id not in models:
+                    models.append(model_id)
+        return models
+    logger.info("获取模型列表失败（provider=%s）：%s", provider, last_error)
+    return []
+
+
+def cache_models(
+    cache: dict, provider: str, models: list[str], now: float | None = None
+) -> dict:
+    """返回更新后的 provider → {models, fetchedAt} 缓存（24h 过期）。"""
+    result = dict(cache) if isinstance(cache, dict) else {}
+    result[str(provider)] = {
+        "models": [str(item) for item in models or []],
+        "fetchedAt": float(now if now is not None else time.time()),
+    }
+    return result
+
+
+def cached_models(
+    cache: dict, provider: str, now: float | None = None
+) -> list[str]:
+    """读取未过期的模型缓存；没有/过期返回 []。"""
+    if not isinstance(cache, dict):
+        return []
+    entry = cache.get(str(provider))
+    if not isinstance(entry, dict):
+        return []
+    try:
+        fetched_at = float(entry.get("fetchedAt", 0))
+    except (TypeError, ValueError):
+        return []
+    current = float(now if now is not None else time.time())
+    if fetched_at <= 0 or current - fetched_at > MODELS_CACHE_TTL:
+        return []
+    models = entry.get("models")
+    if not isinstance(models, list):
+        return []
+    return [str(item) for item in models if str(item)]
+
+
 class AIService:
     def __init__(self, settings) -> None:  # noqa: ANN001
         self._settings = settings
@@ -132,9 +255,14 @@ class AIService:
             return False
         old = self.provider()
         self._settings.set("ai_provider", key)
-        if key != old and key != "custom":
-            self._settings.set("ai_api_base", PROVIDERS[key]["base"])
-            self._settings.set("ai_model", PROVIDERS[key]["default_model"])
+        if key != old:
+            if key == "custom":
+                # 自定义：清空旧服务商的 base/model，由用户填写
+                self._settings.set("ai_api_base", "")
+                self._settings.set("ai_model", "")
+            else:
+                self._settings.set("ai_api_base", PROVIDERS[key]["base"])
+                self._settings.set("ai_model", PROVIDERS[key]["default_model"])
         return True
 
     # ---------- 脱敏 ----------
@@ -152,17 +280,26 @@ class AIService:
         base = self.api_base().rstrip("/")
         return f"{base}/chat/completions"
 
-    def _request_once(self, payload: dict, timeout: float) -> tuple[dict | None, str]:
+    def _auth_schemes(self) -> list[str]:
+        schemes = ["bearer"]
+        if self.preset().get("api_key_header"):
+            schemes.append("api-key")
+        return schemes
+
+    def _request_once(
+        self, payload: dict, timeout: float, scheme: str = "bearer"
+    ) -> tuple[dict | None, str]:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "ShenQing-AI",
+        }
+        headers.update(_auth_headers(self.api_key(), scheme))
         request = urllib.request.Request(
             self._endpoint(),
             data=body,
             method="POST",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key()}",
-                "User-Agent": "ShenQing-AI",
-            },
+            headers=headers,
         )
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
@@ -187,15 +324,18 @@ class AIService:
 
     def _request(self, payload: dict, timeout: float, retries: int = 1) -> tuple[dict | None, str]:
         last_error = ""
-        for attempt in range(retries + 1):
-            data, error = self._request_once(payload, timeout)
-            if data is not None:
-                return data, ""
-            last_error = error
-            if error.startswith("AUTH"):
+        for scheme in self._auth_schemes():
+            for attempt in range(retries + 1):
+                data, error = self._request_once(payload, timeout, scheme)
+                if data is not None:
+                    return data, ""
+                last_error = error
+                if error.startswith("AUTH"):
+                    break  # 鉴权失败：换下一种认证头（MiMo）
+                if attempt < retries:
+                    logger.info("AI 请求失败，重试一次：%s", error)
+            if not last_error.startswith("AUTH"):
                 break
-            if attempt < retries:
-                logger.info("AI 请求失败，重试一次：%s", error)
         return None, last_error
 
     def chat(

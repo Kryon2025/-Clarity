@@ -34,10 +34,14 @@ FluentWindow {
     property int navIndex: 0
     property bool showThemePage: false
     property bool showAboutPage: false
+    property bool showAIPage: false
+    property bool showUpdatePage: false
     property string overlayMode: "none"        // none | whitelist
     property string whitelistMode: ""           // 白名单浮层当前对应的档位（light / medium / heavy）
     property string whitelistSpaceId: ""        // 白名单浮层当前对应的具体空间 id（v0.6 多空间）
-    readonly property int effectivePage: showAboutPage ? 5 : (showThemePage ? 4 : navIndex)
+    readonly property int effectivePage: showAboutPage ? 5
+                                             : (showThemePage ? 4
+                                             : (showAIPage ? 6 : (showUpdatePage ? 7 : navIndex)))
 
     // 导航轨展开/收起 + 插件入口
     property bool navExpanded: false
@@ -130,25 +134,30 @@ FluentWindow {
                                       ? String(App.space.id) : ""
 
     // ---------- 左侧导航分组（v0.5） ----------
-    // 上部一组：空间 / 数据 / 插件 / 主题（主题为次级项，视觉稍小）
-    // 下部一组：设置 / 关于（贴底，两组之间用留白 + 分隔线分开）
+    // 上部一组：空间 / 数据 / AI / 插件 / 主题（主题为次级项，视觉稍小）
+    // 下部一组：更新 / 设置 / 关于（贴底，两组之间用留白 + 分隔线分开）
     readonly property var primaryNav: [
         { key: "spaces", label: qsTr("空间"), icon: "ripple", page: 0, entry: 0, secondary: false },
         { key: "stats", label: qsTr("数据"), icon: "waveBars", page: 1, entry: 1, secondary: false },
-        { key: "plugins", label: qsTr("插件"), icon: "grid", page: 2, entry: 2, secondary: false },
-        { key: "themes", label: qsTr("主题"), icon: "sparkle", page: 4, entry: 3, secondary: true }
+        { key: "ai", label: qsTr("AI"), icon: "sparkle", page: 6, entry: 2, secondary: false },
+        { key: "plugins", label: qsTr("插件"), icon: "grid", page: 2, entry: 3, secondary: false },
+        { key: "themes", label: qsTr("主题"), icon: "leaf", page: 4, entry: 4, secondary: true }
     ]
     readonly property var secondaryNav: [
-        { key: "settings", label: qsTr("设置"), icon: "shell", page: 3, entry: 4, secondary: false },
-        { key: "about", label: qsTr("关于"), icon: "drop", page: 5, entry: 5, secondary: false }
+        { key: "update", label: qsTr("更新"), icon: "download", page: 7, entry: 5, secondary: false },
+        { key: "settings", label: qsTr("设置"), icon: "gear", page: 3, entry: 6, secondary: false },
+        { key: "about", label: qsTr("关于"), icon: "drop", page: 5, entry: 7, secondary: false }
     ]
 
-    // 当前高亮对应的导航项下标：0..3 上部（空间/数据/插件/主题），4..5 下部（设置/关于）
+    // 当前高亮对应的导航项下标：0..4 上部（空间/数据/AI/插件/主题），5..7 下部（更新/设置/关于）
     readonly property int currentNavEntry: {
-        if (win.showAboutPage) return 5
-        if (win.showThemePage) return 3
-        if (win.navIndex === 3) return 4
-        return Math.max(0, Math.min(2, win.navIndex))
+        if (win.showAboutPage) return 7
+        if (win.showUpdatePage) return 5
+        if (win.showThemePage) return 4
+        if (win.showAIPage) return 2
+        if (win.navIndex === 3) return 6
+        if (win.navIndex === 2) return 3
+        return Math.max(0, Math.min(1, win.navIndex))
     }
 
     Component.onCompleted: {
@@ -175,6 +184,8 @@ FluentWindow {
         win.navIndex = Math.max(0, Math.min(3, Math.round(value)))
         win.showThemePage = false
         win.showAboutPage = false
+        win.showAIPage = false
+        win.showUpdatePage = false
         win.activePluginPath = ""
         if (win.navIndex === 2) {
             // 点「插件」：进入插件页并展开/收起入口列表
@@ -191,6 +202,8 @@ FluentWindow {
         win.navIndex = Math.max(0, Math.min(3, Math.round(value)))
         win.showThemePage = false
         win.showAboutPage = false
+        win.showAIPage = false
+        win.showUpdatePage = false
         win.activePluginPath = ""
         win.pluginListOpen = win.navIndex === 2
     }
@@ -198,6 +211,8 @@ FluentWindow {
     function openThemePage(value) {
         win.showThemePage = true
         win.showAboutPage = false
+        win.showAIPage = false
+        win.showUpdatePage = false
         win.pluginListOpen = false
         win.activePluginPath = ""
         if (themePage && value !== undefined && value !== null && String(value) !== "")
@@ -207,6 +222,30 @@ FluentWindow {
     function openAboutPage() {
         win.showAboutPage = true
         win.showThemePage = false
+        win.showAIPage = false
+        win.showUpdatePage = false
+        win.pluginListOpen = false
+        win.activePluginPath = ""
+    }
+
+    function openAIPage() {
+        win.showAIPage = true
+        win.showThemePage = false
+        win.showAboutPage = false
+        win.showUpdatePage = false
+        win.pluginListOpen = false
+        win.activePluginPath = ""
+        // 已配置时进入 AI 页拉一次模型列表；未配置时先显示预设候选，避免无 Key 报错
+        if (typeof App !== "undefined" && typeof App.fetchAIModels === "function"
+                && App.aiConfigured === true)
+            App.fetchAIModels()
+    }
+
+    function openUpdatePage() {
+        win.showUpdatePage = true
+        win.showThemePage = false
+        win.showAboutPage = false
+        win.showAIPage = false
         win.pluginListOpen = false
         win.activePluginPath = ""
     }
@@ -215,21 +254,29 @@ FluentWindow {
         win.navIndex = 2
         win.showThemePage = false
         win.showAboutPage = false
+        win.showAIPage = false
+        win.showUpdatePage = false
         win.pluginListOpen = true
         // 没有独立页面的插件入口：落到插件页（卡片上能看到它的状态/开关）
         win.activePluginPath = path ? String(path) : ""
     }
 
-    // 导航项点击（0..5，含主题 / 关于）
+    // 导航项点击（0..7，含 AI / 主题 / 更新 / 设置 / 关于）
     function selectNavEntry(entry) {
         var value = Number(entry)
         if (!isFinite(value)) return
-        if (value === 3) {
+        if (value === 2) {
+            win.openAIPage()
+        } else if (value === 4) {
             win.openThemePage("")
         } else if (value === 5) {
-            win.openAboutPage()
-        } else if (value === 4) {
+            win.openUpdatePage()
+        } else if (value === 6) {
             win.goToPage(3)
+        } else if (value === 7) {
+            win.openAboutPage()
+        } else if (value === 3) {
+            win.goToPage(2)
         } else {
             win.goToPage(value)
         }
@@ -375,22 +422,22 @@ FluentWindow {
     function navEntryCenter(entryIndex) {
         var value = Number(entryIndex)
         if (!isFinite(value)) value = 0
-        if (value >= 0 && value <= 3) {
+        if (value >= 0 && value <= 4) {
             var primary = primaryNavRepeater.itemAt(value)
             if (primary)
                 return primary.mapToItem(rail, primary.width / 2, win.navItemHeight / 2).y
             return 58 + value * 72 + win.navItemHeight / 2
         }
-        var secondary = secondaryNavRepeater.itemAt(value - 4)
+        var secondary = secondaryNavRepeater.itemAt(value - 5)
         if (secondary)
             return secondary.mapToItem(rail, secondary.width / 2, win.navItemHeight / 2).y
-        return rail.height - 150 + (value - 4) * 70
+        return rail.height - 150 + (value - 5) * 70
     }
 
     function nearestNavEntry(pointerY) {
         var best = 0
         var bestDistance = 1e9
-        for (var i = 0; i < 6; i++) {
+        for (var i = 0; i < 8; i++) {
             var distance = Math.abs(win.navEntryCenter(i) - pointerY)
             if (distance < bestDistance) {
                 bestDistance = distance
@@ -410,7 +457,7 @@ FluentWindow {
     function updateNavDrag(pointerY) {
         if (!win.navDragActive) return
         var first = win.navEntryCenter(0)
-        var last = win.navEntryCenter(5)
+        var last = win.navEntryCenter(7)
         var clamped = Math.max(first, Math.min(last, pointerY))
         win.navDragY = clamped - win.navHighlightHeight / 2
         win.navDragIndex = win.nearestNavEntry(clamped)
@@ -931,6 +978,7 @@ FluentWindow {
                         anchors.fill: parent
                         glassSource: win.glassSource
                         onOnboardingRequested: onboarding.showPages()
+                        onAiPageRequested: win.openAIPage()
                     }
                 }
 
@@ -958,6 +1006,34 @@ FluentWindow {
                     scaleEnabled: true
 
                     AboutPage {
+                        anchors.fill: parent
+                        glassSource: win.glassSource
+                    }
+                }
+
+                // AI 页：独立 pageKey（effectivePage = 6），不占 navIndex
+                AnimatedPage {
+                    anchors.fill: parent
+                    z: win.effectivePage === 6 ? 4 : 1
+                    active: win.effectivePage === 6
+                    animationsEnabled: win.pageTransitions
+                    scaleEnabled: true
+
+                    AIPage {
+                        anchors.fill: parent
+                        glassSource: win.glassSource
+                    }
+                }
+
+                // 更新页：独立 pageKey（effectivePage = 7），不占 navIndex
+                AnimatedPage {
+                    anchors.fill: parent
+                    z: win.effectivePage === 7 ? 4 : 1
+                    active: win.effectivePage === 7
+                    animationsEnabled: win.pageTransitions
+                    scaleEnabled: true
+
+                    UpdatePage {
                         anchors.fill: parent
                         glassSource: win.glassSource
                     }

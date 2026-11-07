@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -77,9 +78,82 @@ class AIServiceTest(unittest.TestCase):
         self.assertEqual(self.service.model(), "glm-4.7-flash")
         self.assertFalse(self.service.set_provider("nope"))
         providers = {item["value"]: item for item in ai_module.provider_list()}
-        self.assertEqual(set(providers), {"groq", "glm", "siliconflow", "custom"})
+        self.assertEqual(
+            set(providers),
+            {"groq", "glm", "siliconflow", "custom", "deepseek", "mimo", "openai"},
+        )
         self.assertIn("Qwen/Qwen2.5-7B-Instruct", providers["siliconflow"]["models"])
         self.assertEqual(providers["glm"]["id"], "glm")
+        # v0.10 新预设：base / 默认模型 / 候选
+        self.assertEqual(providers["deepseek"]["base"], "https://api.deepseek.com/v1")
+        self.assertEqual(providers["deepseek"]["models"], ["deepseek-chat", "deepseek-reasoner"])
+        self.assertEqual(providers["deepseek"]["models"][0], "deepseek-chat")
+        self.assertEqual(providers["mimo"]["base"], "https://api.xiaomimimo.com/v1")
+        self.assertEqual(providers["mimo"]["models"][0], "mimo-v2.6-flash")
+        self.assertIn("mimo-v2.6-pro", providers["mimo"]["models"])
+        self.assertEqual(providers["openai"]["base"], "https://api.openai.com/v1")
+        self.assertEqual(providers["openai"]["models"][0], "gpt-4o-mini")
+
+    def test_provider_switch_defaults(self) -> None:
+        for provider, base, model in (
+            ("deepseek", "https://api.deepseek.com/v1", "deepseek-chat"),
+            ("mimo", "https://api.xiaomimimo.com/v1", "mimo-v2.6-flash"),
+            ("openai", "https://api.openai.com/v1", "gpt-4o-mini"),
+        ):
+            self.assertTrue(self.service.set_provider(provider))
+            self.assertEqual(self.service.api_base(), base)
+            self.assertEqual(self.service.model(), model)
+
+    def test_fetch_models_parses_and_dedupes(self) -> None:
+        payload = {"data": [{"id": "model-a"}, {"id": "model-b"}, {"id": "model-a"}]}
+        with mock.patch.object(
+            ai_module.urllib.request, "urlopen", return_value=_Response(payload)
+        ) as urlopen:
+            models = ai_module.fetch_models("https://api.groq.com/openai/v1", "KEY")
+        self.assertEqual(models, ["model-a", "model-b"])
+        request = urlopen.call_args[0][0]
+        self.assertTrue(request.full_url.endswith("/models"))
+        self.assertEqual(request.get_method(), "GET")
+        self.assertIn("Bearer KEY", request.headers.get("Authorization"))
+
+    def test_fetch_models_failure_returns_empty(self) -> None:
+        with mock.patch.object(
+            ai_module.urllib.request, "urlopen", side_effect=URLError("boom")
+        ):
+            self.assertEqual(
+                ai_module.fetch_models("https://api.groq.com/openai/v1", "KEY"), []
+            )
+        self.assertEqual(ai_module.fetch_models("", "KEY"), [])
+        self.assertEqual(ai_module.fetch_models("https://x", ""), [])
+
+    def test_fetch_models_mimo_api_key_fallback(self) -> None:
+        payload = {"data": [{"id": "mimo-x"}]}
+        calls: list[dict] = []
+
+        def fake_urlopen(request, timeout=None):  # noqa: ANN001
+            calls.append({k.lower(): v for k, v in dict(request.headers).items()})
+            if len(calls) == 1:
+                raise HTTPError(request.full_url, 401, "Unauthorized", None, io.BytesIO(b"{}"))
+            return _Response(payload)
+
+        with mock.patch.object(ai_module.urllib.request, "urlopen", side_effect=fake_urlopen):
+            models = ai_module.fetch_models(
+                "https://api.xiaomimimo.com/v1", "MIMO_KEY", "mimo"
+            )
+        self.assertEqual(models, ["mimo-x"])
+        self.assertEqual(len(calls), 2)
+        self.assertIn("authorization", calls[0])
+        self.assertIn("bearer", calls[0]["authorization"].lower())
+        self.assertEqual(calls[1].get("api-key"), "MIMO_KEY")
+
+    def test_models_cache_expiry(self) -> None:
+        cache = ai_module.cache_models({}, "groq", ["m1", "m2"], now=1000.0)
+        self.assertEqual(ai_module.cached_models(cache, "groq", now=1000.0), ["m1", "m2"])
+        self.assertEqual(
+            ai_module.cached_models(cache, "groq", now=1000.0 + 23 * 3600), ["m1", "m2"]
+        )
+        self.assertEqual(ai_module.cached_models(cache, "groq", now=1000.0 + 25 * 3600), [])
+        self.assertEqual(ai_module.cached_models({}, "groq"), [])
 
     def test_chat_success(self) -> None:
         with mock.patch.object(
@@ -233,6 +307,65 @@ class AIBridgeTest(unittest.TestCase):
         results = self.bridge.aiSearchSettings("主题")
         self.assertTrue(results)
         self.assertEqual(results[0]["key"], "theme_mode")
+
+    def test_ai_models_default_and_fetched(self) -> None:
+        bridge = self.bridge
+        self.assertEqual(bridge.aiModels, PROVIDERS["groq"]["models"])
+        self.assertEqual(bridge.aiModelsState, "idle")
+        bridge._on_ai_models_fetched("groq", ["m1", "m2"], "")
+        self.assertEqual(bridge.aiModels, ["m1", "m2"])
+        self.assertEqual(bridge.aiModelsState, "ok")
+        self.assertEqual(bridge.aiModelsError, "")
+        cache = bridge._settings.get("ai_models_cache", {})
+        self.assertEqual(cache["groq"]["models"], ["m1", "m2"])
+        bridge._on_ai_models_fetched("groq", [], "boom")
+        self.assertEqual(bridge.aiModelsState, "error")
+        self.assertTrue(bridge.aiModelsError)
+
+    def test_ai_models_cache_used_and_expired(self) -> None:
+        bridge = self.bridge
+        bridge._ai_models = []
+        bridge._settings.set(
+            "ai_models_cache",
+            {"groq": {"models": ["cached-1"], "fetchedAt": time.time()}},
+        )
+        self.assertEqual(bridge.aiModels, ["cached-1"])
+        bridge._settings.set(
+            "ai_models_cache",
+            {"groq": {"models": ["stale"], "fetchedAt": time.time() - 25 * 3600}},
+        )
+        self.assertEqual(bridge.aiModels, PROVIDERS["groq"]["models"])
+
+    def test_switch_provider_resets_and_auto_fetches(self) -> None:
+        bridge = self.bridge
+        bridge._on_ai_models_fetched("groq", ["old-model"], "")
+        self.assertEqual(bridge.aiModels, ["old-model"])
+        with mock.patch.object(bridge, "fetchAIModels") as fetch:
+            bridge.setAIProvider("deepseek")
+            _APP.processEvents()
+        self.assertTrue(fetch.called)
+        self.assertEqual(bridge.aiProvider, "deepseek")
+        self.assertEqual(bridge.aiBase, "https://api.deepseek.com/v1")
+        self.assertEqual(bridge.aiModel, "deepseek-chat")
+        self.assertEqual(bridge.aiModels, PROVIDERS["deepseek"]["models"])
+        self.assertEqual(bridge.aiModelsState, "idle")
+
+    def test_fetch_models_without_key_sets_error(self) -> None:
+        bridge = self.bridge
+        bridge.setAIKey("")
+        bridge._ai_models_state = "idle"
+        bridge.fetchAIModels()
+        self.assertEqual(bridge.aiModelsState, "error")
+        self.assertIn("API Key", bridge.aiModelsError)
+
+    def test_stale_provider_result_ignored(self) -> None:
+        bridge = self.bridge
+        with mock.patch.object(bridge, "fetchAIModels"):
+            bridge.setAIProvider("openai")
+        bridge._on_ai_models_fetched("groq", ["old"], "")
+        self.assertEqual(bridge.aiModels, PROVIDERS["openai"]["models"])
+        cache = bridge._settings.get("ai_models_cache", {})
+        self.assertEqual(cache["groq"]["models"], ["old"])
 
 
 if __name__ == "__main__":

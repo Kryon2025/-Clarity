@@ -123,6 +123,7 @@ class AppBridge(QObject):
     sleepChanged = Signal()
     appUsageChanged = Signal()
     aiChanged = Signal()
+    aiModelsChanged = Signal()
     languageChanged = Signal(str)
     _catalogScanned = Signal(list)
     #: 自动更新：后台线程 → 主线程
@@ -131,6 +132,8 @@ class AppBridge(QObject):
     _updateDownloaded = Signal(bool, str)
     #: v0.9 AI：线程池回调 → 主线程（token 防止旧回答覆盖新问题）
     _aiAsyncResult = Signal(int, object)
+    #: v0.10 模型列表拉取结果：provider, models, error
+    _aiModelsFetched = Signal(str, object, str)
 
     def __init__(
         self,
@@ -179,6 +182,10 @@ class AppBridge(QObject):
         self._ai_error = ""
         self._ai_token = 0
         self._ai_mode = ""
+        # v0.10：当前服务商模型列表（fetch /models）
+        self._ai_models: list[str] = []
+        self._ai_models_state = "idle"
+        self._ai_models_error = ""
         # v0.9 应用使用时长统计（前台应用 5s 采样）
         self._app_usage = app_usage.AppUsageTracker(
             now_provider=timesync.now, parent=self
@@ -230,6 +237,7 @@ class AppBridge(QObject):
         self._updateProgress.connect(self._on_update_progress)
         self._updateDownloaded.connect(self._on_update_downloaded)
         self._aiAsyncResult.connect(self._on_ai_result)
+        self._aiModelsFetched.connect(self._on_ai_models_fetched)
         self._app_usage.changed.connect(self._on_app_usage_changed)
         self._session.stateChanged.connect(self.stateChanged)
         self._session.stateChanged.connect(self.lockedChanged)
@@ -872,8 +880,102 @@ class AppBridge(QObject):
 
     @Slot(str)
     def setAIProvider(self, value: str) -> None:
-        if self._ai.set_provider(str(value or "")):
+        old_provider = self._ai.provider()
+        if not self._ai.set_provider(str(value or "")):
+            return
+        if self._ai.provider() == old_provider:
             self.settingsChanged.emit()
+            return
+        # 切换服务商：清空旧模型列表，带出默认 base/model；有 Key 则自动拉取新列表
+        self._ai_models = []
+        self._ai_models_state = "idle"
+        self._ai_models_error = ""
+        self.aiModelsChanged.emit()
+        self.settingsChanged.emit()
+        if self._ai.has_key():
+            QTimer.singleShot(0, self.fetchAIModels)
+
+    # ---------- 模型列表（/models） ----------
+    def _models_cache(self) -> dict:
+        raw = self._settings.get("ai_models_cache", {})
+        return dict(raw) if isinstance(raw, dict) else {}
+
+    @Property(list, notify=aiModelsChanged)
+    def aiModels(self) -> list[str]:
+        if self._ai_models:
+            return list(self._ai_models)
+        cached = ai_service.cached_models(
+            self._models_cache(), self._ai.provider()
+        )
+        if cached:
+            return cached
+        return list(self._ai.preset().get("models") or [])
+
+    @Property(str, notify=aiModelsChanged)
+    def aiModelsState(self) -> str:
+        return self._ai_models_state
+
+    @Property(str, notify=aiModelsChanged)
+    def aiModelsError(self) -> str:
+        return self._ai_models_error
+
+    @Slot()
+    def fetchAIModels(self) -> None:
+        if self._ai_models_state == "loading":
+            return
+        key = self._ai.api_key()
+        base = self._ai.api_base()
+        if not key or not base:
+            self._ai_models = []
+            self._ai_models_state = "error"
+            self._ai_models_error = "请先填写 API Key 与 API Base"
+            self.aiModelsChanged.emit()
+            return
+        provider = self._ai.provider()
+        self._ai_models_state = "loading"
+        self._ai_models_error = ""
+        self.aiModelsChanged.emit()
+        threading.Thread(
+            target=self._fetch_models_worker,
+            args=(provider, base, key),
+            name="shenqing-ai-models",
+            daemon=True,
+        ).start()
+
+    def _fetch_models_worker(self, provider: str, base: str, key: str) -> None:
+        error = ""
+        models: list[str] = []
+        try:
+            models = ai_service.fetch_models(base, key, provider)
+        except Exception as exc:  # noqa: BLE001 - fetch_models 本身不抛异常，双保险
+            error = self._ai.sanitize(exc)
+        if not models and not error:
+            error = "未获取到模型列表"
+        try:
+            self._aiModelsFetched.emit(provider, models, error)
+        except RuntimeError:  # 宿主已销毁
+            pass
+
+    @Slot(str, object, str)
+    def _on_ai_models_fetched(
+        self, provider: str, models: object, error: str
+    ) -> None:
+        fetched = [str(item) for item in models] if isinstance(models, list) else []
+        if fetched:
+            cache = ai_service.cache_models(self._models_cache(), provider, fetched)
+            self._settings.set("ai_models_cache", cache)
+        if str(provider) != self._ai.provider():
+            # 旧服务商的迟到结果：只更新缓存，不影响当前 UI
+            return
+        if fetched:
+            self._ai_models = fetched
+            self._ai_models_state = "ok"
+            self._ai_models_error = ""
+        else:
+            self._ai_models = []
+            self._ai_models_state = "error"
+            self._ai_models_error = self._ai.sanitize(error or "未获取到模型列表")
+        self.aiModelsChanged.emit()
 
     @Property(str, notify=settingsChanged)
     def aiBase(self) -> str:

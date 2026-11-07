@@ -8,7 +8,7 @@ APP_NAME = "深清"
 #: 英文名（v0.4 起对外统一用 Clarity；「身轻」不再展示）
 APP_ALIAS = "Clarity"
 APP_ID = "ShenQing"
-APP_VERSION = "0.9.0"
+APP_VERSION = "0.10.0"
 
 #: GitHub 仓库（自动更新与反馈入口用）
 GITHUB_REPO = "Kryon2025/Clarity"
@@ -39,6 +39,25 @@ DEFAULT_THEME = "solid"
 
 #: 更新日志（最新在前；en 为空时用中文兜底）
 CHANGELOG = [
+    {
+        "version": "0.10.0",
+        "date": "2025-11-07",
+        "tag": "",
+        "items": [
+            "导航新增 AI 页（数据下方）与更新页（设置上方）；AI 配置与对话迁到独立页面",
+            "AI 服务商新增 DeepSeek、小米 MiMo、ChatGPT，并支持自动获取最新模型列表（24 小时缓存，可手动刷新）",
+            "更新页：检查更新、查看更新说明、下载进度、安装并重启、最近更新日志",
+            "入场动画改为持续流场粒子：水光拖尾、三层视差、中心可读性优化，结束光波扩散",
+            "修复 CI 单测在 UTC 时区下因硬编码日期失败的问题",
+        ],
+        "items_en": [
+            "New AI page (below Stats) and Updates page (above Settings); AI configuration and chat moved to their own page",
+            "AI providers now include DeepSeek, Xiaomi MiMo and ChatGPT, with automatic latest-model fetching (24h cache, manual refresh)",
+            "Updates page: check for updates, release notes, download progress, install-and-restart, recent changelog",
+            "Entry animation reworked into a continuous flow field: light trails, three depth layers, readable center, final light wave",
+            "Fixed CI unit tests failing under UTC due to a hard-coded date",
+        ],
+    },
     {
         "version": "0.9.0",
         "date": "2025-11-07",

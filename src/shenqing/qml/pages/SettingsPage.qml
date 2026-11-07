@@ -11,6 +11,7 @@ Item {
     property Item glassSource: null
 
     signal onboardingRequested()
+    signal aiPageRequested()
 
     // ---------- 还清（睡眠模式）本地状态 ----------
     property bool localSleepReminders: true
@@ -610,331 +611,53 @@ Item {
                 }
             }
 
-            // ---------- v0.9 AI 助手 ----------
+            // ---------- v0.10 AI 助手入口（配置与对话已迁移到独立 AI 页） ----------
             GlassCard {
                 width: parent.width
-                implicitHeight: aiColumn.implicitHeight + 30
-                height: implicitHeight
+                height: 64
                 radius: 20
                 interactive: false
                 glassSource: page.glassSource
 
-                Item {
-                    id: aiCardBody
-                    anchors.fill: parent
-                    anchors.margins: 16
-
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 9
+                    Glyph {
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "sparkle"
+                        size: 15
+                        color: AppTheme.accent
+                    }
                     Column {
-                        id: aiColumn
-                        width: parent.width
-                        spacing: 10
-
-                        Row {
-                            width: parent.width
-                            spacing: 8
-                            Glyph {
-                                anchors.verticalCenter: parent.verticalCenter
-                                kind: "sparkle"
-                                size: 16
-                                color: AppTheme.accent
-                            }
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: qsTr("AI 助手")
-                                color: AppTheme.textPrimary
-                                font.pixelSize: 15
-                                font.weight: Font.DemiBold
-                                font.family: C.numFont
-                            }
-                            Item { width: parent.width - 320; height: 1 }
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: page.aiStatusText
-                                color: page.aiStatusColor
-                                font.pixelSize: 11
-                                font.family: C.numFont
-                                elide: Text.ElideRight
-                                width: 170
-                                horizontalAlignment: Text.AlignRight
-                            }
-                            GlassSwitch {
-                                anchors.verticalCenter: parent.verticalCenter
-                                checked: page.aiEnabledValue
-                                onClicked: page.toggleAI()
-                            }
-                        }
-
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2
                         Text {
-                            width: parent.width
-                            text: qsTr("配置服务商与 API Key 后，可在右上角 AI 入口直接提问；Key 只保存在本机。")
+                            text: qsTr("AI 助手")
+                            color: AppTheme.textPrimary
+                            font.pixelSize: 13
+                            font.family: C.numFont
+                        }
+                        Text {
+                            text: qsTr("服务商、模型与对话，已移到左侧「AI」页")
                             color: AppTheme.textTertiary
                             font.pixelSize: 11
                             font.family: C.numFont
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Rectangle { width: parent.width; height: 1; color: AppTheme.divider }
-
-                        // 服务商
-                        Item {
-                            width: parent.width
-                            height: 36
-                            Text {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: qsTr("服务商")
-                                color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
-                                width: 76
-                            }
-                            Item {
-                                id: aiProviderField
-                                anchors.left: parent.left
-                                anchors.leftMargin: 76
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 260
-                                height: 32
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 9
-                                    color: AppTheme.cardBgAlt
-                                    border.width: 1
-                                    border.color: aiProviderArea.containsMouse ? AppTheme.accent : AppTheme.cardBorder
-                                }
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 12
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: page.aiProviderLabel
-                                    color: AppTheme.textPrimary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
-                                }
-                                Text {
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 10
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "▾"
-                                    color: AppTheme.textTertiary
-                                    font.pixelSize: 12
-                                }
-                                MouseArea {
-                                    id: aiProviderArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: page.aiProviderMenuOpen = !page.aiProviderMenuOpen
-                                }
-                            }
-                        }
-
-                        // 模型
-                        Item {
-                            width: parent.width
-                            height: 36
-                            Text {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: qsTr("模型")
-                                color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
-                                width: 76
-                            }
-                            TextInput {
-                                id: aiModelInput
-                                anchors.left: parent.left
-                                anchors.leftMargin: 76
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 76
-                                height: 32
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: AppTheme.textPrimary
-                                selectionColor: AppTheme.accentSoft
-                                selectedTextColor: "#FFFFFF"
-                                font.pixelSize: 12
-                                font.family: C.numFont
-                                text: page.aiModelDraft
-                                onTextChanged: page.aiModelDraft = text
-                                onEditingFinished: page.saveAIModel()
-                                Rectangle {
-                                    anchors.fill: parent
-                                    z: -1
-                                    radius: 9
-                                    color: AppTheme.cardBgAlt
-                                    border.width: 1
-                                    border.color: aiModelInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
-                                }
-                            }
-                        }
-
-                        // API Base
-                        Item {
-                            width: parent.width
-                            height: 36
-                            Text {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: qsTr("API Base")
-                                color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
-                                width: 76
-                            }
-                            TextInput {
-                                id: aiBaseInput
-                                anchors.left: parent.left
-                                anchors.leftMargin: 76
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 76
-                                height: 32
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: AppTheme.textPrimary
-                                selectionColor: AppTheme.accentSoft
-                                selectedTextColor: "#FFFFFF"
-                                font.pixelSize: 12
-                                font.family: C.monoFont
-                                text: page.aiBaseDraft
-                                onTextChanged: page.aiBaseDraft = text
-                                onEditingFinished: page.saveAIBase()
-                                Rectangle {
-                                    anchors.fill: parent
-                                    z: -1
-                                    radius: 9
-                                    color: AppTheme.cardBgAlt
-                                    border.width: 1
-                                    border.color: aiBaseInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
-                                }
-                            }
-                        }
-
-                        // API Key
-                        Item {
-                            width: parent.width
-                            height: 36
-                            Text {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: qsTr("API Key")
-                                color: AppTheme.textSecondary
-                                font.pixelSize: 12
-                                font.family: C.numFont
-                                width: 76
-                            }
-                            TextInput {
-                                id: aiKeyInput
-                                anchors.left: parent.left
-                                anchors.leftMargin: 76
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 76
-                                height: 32
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: AppTheme.textPrimary
-                                selectionColor: AppTheme.accentSoft
-                                selectedTextColor: "#FFFFFF"
-                                font.pixelSize: 12
-                                font.family: C.monoFont
-                                echoMode: TextInput.Password
-                                passwordCharacter: "•"
-                                text: page.aiKeyDraft
-                                onTextChanged: page.aiKeyDraft = text
-                                onEditingFinished: page.saveAIKey()
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    visible: aiKeyInput.text.length === 0
-                                    text: (typeof App !== "undefined" && App.aiHasKey === true)
-                                          ? qsTr("已保存，留空不修改") : qsTr("输入 API Key")
-                                    color: AppTheme.textTertiary
-                                    font.pixelSize: 12
-                                    font.family: C.numFont
-                                }
-                                Rectangle {
-                                    anchors.fill: parent
-                                    z: -1
-                                    radius: 9
-                                    color: AppTheme.cardBgAlt
-                                    border.width: 1
-                                    border.color: aiKeyInput.activeFocus ? AppTheme.accent : AppTheme.cardBorder
-                                }
-                            }
-                        }
-
-                        Row {
-                            width: parent.width
-                            spacing: 10
-                            GlassButton {
-                                text: page.aiTestKind === "testing" ? qsTr("测试中…") : qsTr("测试连接")
-                                tone: "ghost"
-                                fontSize: 12
-                                padH: 16
-                                minHeight: 32
-                                enabled: page.aiTestKind !== "testing"
-                                onClicked: page.testAIConnection()
-                            }
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 200
-                                text: page.aiStatusText
-                                color: page.aiStatusColor
-                                font.pixelSize: 11
-                                font.family: C.numFont
-                                elide: Text.ElideRight
-                            }
                         }
                     }
+                }
 
-                    // 服务商下拉菜单
-                    Item {
-                        id: aiProviderPopup
-                        visible: page.aiProviderMenuOpen
-                        z: 30
-                        x: 76
-                        y: 96
-                        width: 260
-                        height: aiProviderListColumn.height + 8
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: 12
-                            color: AppTheme.cardBg
-                            border.width: 1
-                            border.color: AppTheme.cardBorderStrong
-                        }
-
-                        Column {
-                            id: aiProviderListColumn
-                            x: 6
-                            y: 4
-                            width: parent.width - 12
-                            spacing: 2
-
-                            Repeater {
-                                model: page.aiProviderList
-                                delegate: Item {
-                                    width: parent.width
-                                    height: 32
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 10
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: (modelData.label !== undefined) ? String(modelData.label) : String(modelData.id)
-                                        color: page.aiProviderIndex === index ? AppTheme.accent
-                                              : (providerItemArea.containsMouse ? AppTheme.textPrimary : AppTheme.textSecondary)
-                                        font.pixelSize: 12
-                                        font.family: C.numFont
-                                    }
-                                    MouseArea {
-                                        id: providerItemArea
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: page.selectAIProvider(index)
-                                    }
-                                }
-                            }
-                        }
-                    }
+                GlassButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("前往 AI 页")
+                    tone: "ghost"
+                    fontSize: 12
+                    padH: 16
+                    minHeight: 32
+                    onClicked: page.aiPageRequested()
                 }
             }
 
